@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!--
+  FIXTURE: soccerstats/matches_today.html
+  Represents: https://www.soccerstats.com/matches.asp (today view)
+
+  Link inventory (exact counts for tests):
+    Total <a href> tags : 14
+    Same-domain crawlable: 9  (pmatch, latest, leagueview, round_details, results, homeaway, formtable, widetable, faq)
+    Restricted/blocked  : 2  (members.asp, /cdn-cgi/login)
+    External links      : 3  (twitter, facebook, instagram)
+-->
+<html lang="en">
+<head>
+  <title>Soccer Statistics - Today's Matches</title>
+</head>
+<body>
+  <div id="header">
+    <a href="https://www.soccerstats.com/">Home</a>
+    <a href="https://www.soccerstats.com/matches.asp">Today</a>
+    <a href="https://www.soccerstats.com/members.asp">Members Login</a>
+    <a href="https://www.soccerstats.com/cdn-cgi/login">CDN Login</a>
+  </div>
+
+  <table id="matches-table">
+    <tr class="league-header">
+      <td colspan="8">England Premier League</td>
+    </tr>
+    <tr class="match-row">
+      <td>15:00</td>
+      <td><a href="https://www.soccerstats.com/pmatch.asp?league=england&stats=1">Arsenal vs Chelsea</a></td>
+      <td><a href="https://www.soccerstats.com/latest.asp?league=england">EPL Latest</a></td>
+      <td><a href="https://www.soccerstats.com/leagueview.asp?league=england">League View</a></td>
+    </tr>
+    <tr class="league-header">
+      <td colspan="8">Spain La Liga</td>
+    </tr>
+    <tr class="match-row">
+      <td>20:45</td>
+      <td><a href="https://www.soccerstats.com/round_details.asp?league=spain&mrevid=m42&st1=1&st2=4">Atletico Madrid vs Real Madrid</a></td>
+      <td><a href="https://www.soccerstats.com/results.asp?league=spain">Spain Results</a></td>
+      <td><a href="https://www.soccerstats.com/homeaway.asp?league=spain">Home/Away</a></td>
+    </tr>
+  </table>
+
+  <div id="sidebar">
+    <a href="https://www.soccerstats.com/formtable.asp?league=england">Form Table</a>
+    <a href="https://www.soccerstats.com/widetable.asp?league=england">Wide Table</a>
+    <a href="https://www.soccerstats.com/faq.asp">FAQ</a>
+  </div>
+
+  <div id="social">
+    <a href="https://twitter.com/soccerstats">Twitter</a>
+    <a href="https://facebook.com/soccerstats">Facebook</a>
+    <a href="https://instagram.com/soccerstats">Instagram</a>
+  </div>
+</body>
+</html>

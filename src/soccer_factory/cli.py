@@ -42,6 +42,12 @@ def parse_args() -> argparse.Namespace:
     smoke_parser = subparsers.add_parser("smoke-test", parents=[parent_parser])
     smoke_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
 
+    discover_parser = subparsers.add_parser("discover", parents=[parent_parser])
+    discover_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
+
+    catalog_parser = subparsers.add_parser("catalog", parents=[parent_parser])
+    catalog_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
+
     return parser.parse_args()
 
 def check_mode(args: argparse.Namespace) -> None:
@@ -51,12 +57,16 @@ def check_mode(args: argparse.Namespace) -> None:
 
 def do_collect(args: argparse.Namespace) -> None:
     setup_dirs()
-    if args.mode == "fixture":
+    if getattr(args, 'mode', 'fixture') == "fixture":
         # Copy fixtures to raw
         import shutil
+        collected_count = 0
         for file in os.listdir("tests/fixtures"):
-            shutil.copy(os.path.join("tests/fixtures", file), os.path.join(DATA_RAW, file))
-        manifest = {"collected": len(os.listdir("tests/fixtures")), "mode": "fixture", "timestamp": datetime.now(timezone.utc).isoformat()}
+            src_path = os.path.join("tests/fixtures", file)
+            if os.path.isfile(src_path):
+                shutil.copy(src_path, os.path.join(DATA_RAW, file))
+                collected_count += 1
+        manifest = {"collected": collected_count, "mode": "fixture", "timestamp": datetime.now(timezone.utc).isoformat()}
         with open(f"{DATA_RAW}/manifest.json", "w") as f:
             json.dump(manifest, f)
         print("Collect complete (fixture mode). Zero external requests made.")
@@ -346,6 +356,59 @@ def do_smoke_test(args: argparse.Namespace) -> None:
         preds = fb_parser.parse_predictions(content, dt)
         print(f"Smoke test SUCCESS: fetched {len(content)} bytes. Parsed {len(matches)} matches and {len(preds)} observations from Forebet.")
 
+
+def do_discover(args: argparse.Namespace) -> None:
+    import tomllib
+    from src.soccer_factory.discovery.crawler import BoundedCrawler
+    from src.soccer_factory.discovery.catalog import CatalogStore
+    from src.soccer_factory.discovery.models import DiscoveryConfig
+    from src.soccer_factory.discovery.seeds import get_seeds
+    from src.soccer_factory.sources.http_collector import HttpCollector
+    
+    config_path = "discovery_config.toml"
+    with open(config_path, "rb") as fh:
+        raw_config = tomllib.load(fh)
+        
+    cfg = DiscoveryConfig(
+        max_depth=raw_config.get("defaults", {}).get("max_depth", 2),
+        max_pages_per_source=raw_config.get("defaults", {}).get("max_pages_per_source", 100),
+        max_pages_per_family=raw_config.get("defaults", {}).get("max_pages_per_family", 20),
+        max_requests_per_minute=raw_config.get("defaults", {}).get("max_requests_per_minute", 20),
+        max_total_requests=raw_config.get("defaults", {}).get("max_total_requests", 200),
+        max_response_bytes=raw_config.get("defaults", {}).get("max_response_bytes", 2097152),
+        request_timeout_seconds=raw_config.get("defaults", {}).get("request_timeout_seconds", 15.0),
+        request_delay_seconds=raw_config.get("defaults", {}).get("request_delay_seconds", 3.0),
+        parallelism=raw_config.get("defaults", {}).get("parallelism", 1),
+        circuit_breaker_threshold=raw_config.get("defaults", {}).get("circuit_breaker_threshold", 3),
+        robots_unavailable_blocks=raw_config.get("defaults", {}).get("robots_unavailable_blocks", True),
+        record_external_links=raw_config.get("defaults", {}).get("record_external_links", False),
+        fixture_map_soccerstats=raw_config.get("fixtures", {}).get("soccerstats", {}),
+        fixture_map_forebet=raw_config.get("fixtures", {}).get("forebet", {}),
+    )
+    seeds_override = raw_config.get("seeds", {}).get(args.source, {}).get("urls", [])
+    seeds = get_seeds(args.source, seeds_override)
+
+    collector = HttpCollector(timeout=cfg.request_timeout_seconds) if getattr(args, 'mode', 'fixture') == "live" else None
+    crawler = BoundedCrawler(config=cfg, collector=collector)
+    print(f"Starting discovery for {args.source} in {args.mode} mode...")
+    entries, manifest = crawler.crawl(args.source, seeds, mode=args.mode)
+    
+    store = CatalogStore()
+    for e in entries:
+        store.append(e)
+    store.save_run_manifest(args.source, manifest)
+    
+    reps = store.select_representatives(args.source)
+    store.save_representatives(args.source, reps)
+    
+    print(f"Discovery complete. Fetched {manifest.pages_fetched} pages. Reason: {manifest.stop_reason}")
+
+def do_catalog(args: argparse.Namespace) -> None:
+    from src.soccer_factory.discovery.catalog import CatalogStore
+    store = CatalogStore()
+    summary = store.export_markdown_summary(args.source)
+    print(summary)
+
 def main() -> None:
     args = parse_args()
     check_mode(args)
@@ -370,6 +433,10 @@ def main() -> None:
         do_report(args)
     elif args.command == "smoke-test":
         do_smoke_test(args)
+    elif args.command == "discover":
+        do_discover(args)
+    elif args.command == "catalog":
+        do_catalog(args)
     elif args.command == "run-daily":
         do_collect(args)
         do_validate(args)

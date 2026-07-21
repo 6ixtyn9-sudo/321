@@ -1,0 +1,65 @@
+# discovery_config.toml
+# Configuration for bounded page-family discovery.
+#
+# This file controls BoundedCrawler limits, policy knobs, fixture maps, and
+# optional seed overrides.  All limits are hard safety limits — the crawler
+# stops cleanly when any limit is reached.
+
+[defaults]
+max_depth = 2
+max_pages_per_source = 100
+max_pages_per_family = 20
+max_requests_per_minute = 20
+max_total_requests = 200
+max_response_bytes = 2097152      # 2 MB
+request_timeout_seconds = 15.0
+request_delay_seconds = 3.0
+parallelism = 1
+circuit_breaker_threshold = 3
+robots_unavailable_blocks = true  # safe-block default
+record_external_links = false
+
+[soccerstats]
+base_url = "https://www.soccerstats.com"
+
+[forebet]
+base_url = "https://www.forebet.com"
+
+# ---------------------------------------------------------------------------
+# Fixture maps
+#
+# Maps each seed URL to a local fixture file (relative to tests/fixtures/discovery/).
+# Only these URLs are "fetchable" in fixture mode.  Discovered child links that
+# are not in this map will be recorded as discovery_status=discovered,
+# fetch_status=not_attempted with error="no_fixture_mapping".
+# ---------------------------------------------------------------------------
+
+[fixtures.soccerstats]
+"https://www.soccerstats.com/matches.asp" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1" = "soccerstats/matches_yesterday.html"
+"https://www.soccerstats.com/matches.asp?matchday=1&matchdayn=1" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=2&daym=tomorrow&matchdayn=1" = "soccerstats/matches_tomorrow.html"
+"https://www.soccerstats.com/leagues.asp" = "soccerstats/leagues.html"
+"https://www.soccerstats.com/stats.asp" = "soccerstats/stats_page1.html"
+"https://www.soccerstats.com/faq.asp" = "soccerstats/faq.html"
+"https://www.soccerstats.com/round_details.asp?league=ecuador&mrevid=m160&st1=13&st2=16" = "soccerstats/round_details_example.html"
+
+[fixtures.forebet]
+"https://www.forebet.com/en/football-tips-and-predictions-for-today" = "forebet/today.html"
+"https://www.forebet.com/en/football-tips-and-predictions-for-tomorrow" = "forebet/tomorrow.html"
+"https://www.forebet.com/en/football-tips-and-predictions-for-the-weekend" = "forebet/weekend.html"
+"https://www.forebet.com/en/football-predictions-from-yesterday" = "forebet/finished.html"
+"https://www.forebet.com/en/live-football-tips" = "forebet/live.html"
+
+# ---------------------------------------------------------------------------
+# Seed overrides (optional)
+#
+# When non-empty, the list here replaces the default seeds in seeds.py.
+# When empty (default), the defaults defined in seeds.py are used.
+# ---------------------------------------------------------------------------
+
+[seeds.soccerstats]
+# urls = []
+
+[seeds.forebet]
+# urls = []

@@ -1,0 +1,40 @@
+{
+  "run_id": "7209cdcdff784f619ed111551eac92a7",
+  "source": "forebet",
+  "mode": "fixture",
+  "seed_count": 5,
+  "pages_discovered": 18,
+  "pages_fetched": 5,
+  "pages_parsed": 5,
+  "pages_failed": 0,
+  "pages_restricted": 0,
+  "pages_external": 0,
+  "families_found": [
+    "asian_handicap",
+    "btts",
+    "by_country",
+    "cards",
+    "corners",
+    "daily_predictions",
+    "double_chance",
+    "finished_predictions",
+    "goals_market",
+    "goalscorers",
+    "half_time",
+    "half_time_full_time",
+    "live_predictions",
+    "result_market",
+    "tomorrow_predictions",
+    "top_predictions",
+    "weekend_predictions"
+  ],
+  "families_missing": [
+    "by_league",
+    "prediction_list",
+    "values_or_odds"
+  ],
+  "stop_reason": null,
+  "network_requests": 0,
+  "started_at": "2026-07-21T20:52:23.127884Z",
+  "completed_at": "2026-07-21T20:52:23.145560Z"
+}

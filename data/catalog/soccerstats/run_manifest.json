@@ -1,0 +1,40 @@
+{
+  "run_id": "7f37c047bf6d41bb93cb8575b29e5f27",
+  "source": "soccerstats",
+  "mode": "fixture",
+  "seed_count": 8,
+  "pages_discovered": 35,
+  "pages_fetched": 8,
+  "pages_parsed": 8,
+  "pages_failed": 0,
+  "pages_restricted": 3,
+  "pages_external": 4,
+  "families_found": [
+    "faq",
+    "form_table",
+    "generic_table",
+    "home_away",
+    "homepage",
+    "league_latest",
+    "league_view",
+    "legal",
+    "match_list",
+    "match_preview",
+    "matches",
+    "results",
+    "round_details",
+    "statistical_overview",
+    "wide_table"
+  ],
+  "families_missing": [
+    "favourite_stats",
+    "leagueview_team",
+    "stats_by_month",
+    "team_stats",
+    "trends"
+  ],
+  "stop_reason": null,
+  "network_requests": 0,
+  "started_at": "2026-07-21T20:52:15.931522Z",
+  "completed_at": "2026-07-21T20:52:15.977630Z"
+}
