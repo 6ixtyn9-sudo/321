@@ -90,7 +90,12 @@ def extract_links(html: bytes, base_url: str) -> List[str]:
 
     links: List[str] = []
     for tag in soup.find_all("a", href=True):
-        href = tag["href"].strip()
+        href = tag.get("href")
+        if isinstance(href, list):
+            href = href[0]
+        if not isinstance(href, str):
+            continue
+        href = href.strip()
         if not href or href.startswith("#"):
             continue
         absolute = urljoin(base_url, href)
@@ -373,7 +378,7 @@ class BoundedCrawler:
                     collector = self.collector
                     if collector is None:
                         raise RuntimeError("No collector configured for live mode.")
-                    status, content, headers, error = collector.fetch(url)  # type: ignore[union-attr]
+                    status, content, headers, error = collector.fetch(url)  # type: ignore
                     manifest.network_requests += 1
 
                     if error:
@@ -433,11 +438,11 @@ class BoundedCrawler:
 
                 try:
                     diag = diagnose_page(html)
-                    entry.tables_found = int(diag["tables"])  # type: ignore[arg-type]
-                    entry.links_found = int(diag["links"])    # type: ignore[arg-type]
-                    entry.forms_found = int(diag["forms"])    # type: ignore[arg-type]
-                    entry.scripts_found = int(diag["scripts"]) # type: ignore[arg-type]
-                    entry.page_title = diag["title"]           # type: ignore[assignment]
+                    entry.tables_found = int(diag["tables"])  # type: ignore
+                    entry.links_found = int(diag["links"])    # type: ignore
+                    entry.forms_found = int(diag["forms"])    # type: ignore
+                    entry.scripts_found = int(diag["scripts"]) # type: ignore
+                    entry.page_title = diag["title"]           # type: ignore
                     entry.parse_status = "ok"
                     entry.discovery_status = "parsed"
                     manifest.pages_parsed += 1

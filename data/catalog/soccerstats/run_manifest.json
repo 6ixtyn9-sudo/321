@@ -1,5 +1,5 @@
 {
-  "run_id": "7f37c047bf6d41bb93cb8575b29e5f27",
+  "run_id": "df1a495d7c8b43c3ba2d710bd58a41a0",
   "source": "soccerstats",
   "mode": "fixture",
   "seed_count": 8,
@@ -35,6 +35,6 @@
   ],
   "stop_reason": null,
   "network_requests": 0,
-  "started_at": "2026-07-21T20:52:15.931522Z",
-  "completed_at": "2026-07-21T20:52:15.977630Z"
+  "started_at": "2026-07-21T20:57:47.374622Z",
+  "completed_at": "2026-07-21T20:57:47.411439Z"
 }

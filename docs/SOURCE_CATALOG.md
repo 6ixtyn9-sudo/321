@@ -1,58 +1,44 @@
-# Catalog Summary — soccerstats
+# Source Catalog Reference
 
-Run ID: `7f37c047bf6d41bb93cb8575b29e5f27`
-Mode: fixture
-Seeds: 8
-Fetched: 8
-Network requests: 0
-Stop reason: completed normally
+This document describes how to interpret the runtime catalog artifacts produced by the Discovery Subsystem.
 
-| Family | Count |
-|--------|-------|
-| faq | 1 |
-| form_table | 1 |
-| generic_table | 1 |
-| home_away | 2 |
-| homepage | 1 |
-| league_latest | 2 |
-| league_view | 1 |
-| legal | 1 |
-| match_list | 1 |
-| match_preview | 2 |
-| matches | 5 |
-| restricted | 3 |
-| results | 3 |
-| round_details | 3 |
-| statistical_overview | 3 |
-| wide_table | 1 |
+The catalog operates on **Bounded Page-Family Discovery** principles rather than exhaustive crawling. Its outputs represent verified, safely extracted slices of the data domains under observation.
 
+## Catalog Directory Structure
 
+All runtime catalog outputs are stored under `data/catalog/` in environment-specific subdirectories (e.g., `data/catalog/soccerstats/`).
 
-# Catalog Summary — forebet
+The directory contains three core artifacts:
 
-Run ID: `7209cdcdff784f619ed111551eac92a7`
-Mode: fixture
-Seeds: 5
-Fetched: 5
-Network requests: 0
-Stop reason: completed normally
+1. **`catalog.jsonl`**: The immutable, append-only history of every page discovery attempt, fetch result, and parse status.
+2. **`representatives.jsonl`**: The latest valid snapshot representing a known `page_family`. Used by downstream parsers for validation.
+3. **`run_manifest.json`**: Execution metadata for the most recent discovery run (seed counts, families found, network request metrics).
 
-| Family | Count |
-|--------|-------|
-| asian_handicap | 1 |
-| btts | 1 |
-| by_country | 2 |
-| cards | 1 |
-| corners | 1 |
-| daily_predictions | 1 |
-| double_chance | 1 |
-| finished_predictions | 1 |
-| goals_market | 1 |
-| goalscorers | 1 |
-| half_time | 1 |
-| half_time_full_time | 1 |
-| live_predictions | 1 |
-| result_market | 1 |
-| tomorrow_predictions | 1 |
-| top_predictions | 1 |
-| weekend_predictions | 1 |
+## Interpreting `run_manifest.json`
+
+The manifest records the footprint of the discovery run.
+
+- **`families_found`**: The set of explicitly recognized page families mapped to `models.PageFamily`.
+- **`families_missing`**: The set of known families that were not discovered during the crawl limits.
+- **`stop_reason`**: Explains why the crawl ended (e.g., `None` for natural exhaustion, `depth_limit_reached`, or `circuit_open`).
+
+## Interpreting `catalog.jsonl`
+
+Entries in `catalog.jsonl` are JSON-Lines format representing `CatalogEntry` schemas.
+
+Important fields:
+- **`url`**: The raw URL discovered.
+- **`canonical_url`**: The normalized URL after fragment stripping and parameter sorting.
+- **`page_family`**: The explicitly typed family (e.g., `match_preview`) or `unknown` for unrecognized links.
+- **`discovery_status`**: Tracks the progression: `discovered`, `fetched`, `parsed`.
+- **`error`**: Present if the fetch/parse failed. Contains reasons like `no_fixture_mapping`, `404 Not Found`, or `rate_limited`.
+- **`content_hash`**: SHA-256 hash of the page HTML. Used to deduplicate identical structural copies over time.
+
+### Append-Only Guarantee
+Historical observations are never overwritten. Even if the same URL is fetched with identical contents, it is appended as a distinct observation keyed by time. If the `content_hash` changes, the snapshot represents a new version of the resource.
+
+## Known Limitations
+
+- **Completeness**: Catalog coverage is not proof that every site page was discovered. Limit parameters (`max_depth`, `max_pages_per_family`) explicitly halt crawling.
+- **Live vs Fixture**: Runs executed in `--mode fixture` make zero network requests. Any URL discovered outside the defined `discovery_config.toml` mappings is logged as `not_attempted` with the reason `no_fixture_mapping`.
+- **Dynamic Content**: JavaScript-only links are intentionally ignored.

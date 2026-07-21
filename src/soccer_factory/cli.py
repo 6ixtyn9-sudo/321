@@ -388,7 +388,7 @@ def do_discover(args: argparse.Namespace) -> None:
     seeds_override = raw_config.get("seeds", {}).get(args.source, {}).get("urls", [])
     seeds = get_seeds(args.source, seeds_override)
 
-    collector = HttpCollector(timeout=cfg.request_timeout_seconds) if getattr(args, 'mode', 'fixture') == "live" else None
+    collector = HttpCollector(user_agent="321-discovery-bot", delay=cfg.request_delay_seconds, max_requests=cfg.max_total_requests) if getattr(args, 'mode', 'fixture') == "live" else None
     crawler = BoundedCrawler(config=cfg, collector=collector)
     print(f"Starting discovery for {args.source} in {args.mode} mode...")
     entries, manifest = crawler.crawl(args.source, seeds, mode=args.mode)
