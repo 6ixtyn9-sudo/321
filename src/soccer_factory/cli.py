@@ -393,7 +393,8 @@ def do_discover(args: argparse.Namespace) -> None:
     print(f"Starting discovery for {args.source} in {args.mode} mode...")
     entries, manifest = crawler.crawl(args.source, seeds, mode=args.mode)
     
-    store = CatalogStore()
+    catalog_dir = "data/catalog_live_audit" if getattr(args, 'mode', 'fixture') == "live" else "data/catalog"
+    store = CatalogStore(catalog_dir=catalog_dir)
     for e in entries:
         store.append(e)
     store.save_run_manifest(args.source, manifest)
@@ -405,7 +406,12 @@ def do_discover(args: argparse.Namespace) -> None:
 
 def do_catalog(args: argparse.Namespace) -> None:
     from src.soccer_factory.discovery.catalog import CatalogStore
-    store = CatalogStore()
+    # We default to fixture for catalog read unless specified otherwise? The user wants them separate.
+    # We will just use the standard one, or we can check args.mode if available, but catalog doesn't have --mode.
+    # The requirement says "Live and fixture catalogs Keep these strictly separate". We'll just read from data/catalog for now as the catalog command is for the fixture data, or add --mode to catalog.
+    mode = getattr(args, 'mode', 'fixture')
+    catalog_dir = "data/catalog_live_audit" if mode == "live" else "data/catalog"
+    store = CatalogStore(catalog_dir=catalog_dir)
     summary = store.export_markdown_summary(args.source)
     print(summary)
 

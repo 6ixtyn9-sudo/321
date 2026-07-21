@@ -18,9 +18,19 @@ The directory contains three core artifacts:
 
 The manifest records the footprint of the discovery run.
 
-- **`families_found`**: The set of explicitly recognized page families mapped to `models.PageFamily`.
-- **`families_missing`**: The set of known families that were not discovered during the crawl limits.
+- **`families_found`**: The set of explicitly recognized page families that were observed during this run.
+- **`families_missing`**: The set of known taxonomy families that were not discovered during the crawl limits.
 - **`stop_reason`**: Explains why the crawl ended (e.g., `None` for natural exhaustion, `depth_limit_reached`, or `circuit_open`).
+
+## Taxonomy Observation Statuses
+
+The discovery subsystem distinguishes between theoretical targets and verified pages using the `observation_status` field in `representatives.jsonl`:
+- `live_observed`: The family has been verified against the live site.
+- `fixture_observed`: The family has been verified against a local HTML fixture.
+- `classifier_only`: The family is a taxonomy target but has not been successfully crawled or parsed.
+- `parser_implemented`: A working parser exists for this family.
+- `parser_unimplemented`: Data extraction is planned but no parser exists yet.
+- `unavailable`: The page family exists in taxonomy but is currently unavailable on the site.
 
 ## Interpreting `catalog.jsonl`
 

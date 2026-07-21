@@ -10,6 +10,16 @@ The Bounded Page-Family Discovery Subsystem has been successfully implemented an
 - **Actual Total Test Count**: 110
 - **Overall Project Coverage**: 77% (with `src/soccer_factory/discovery/` at 90%+ for core routing logic, though CLI integration lowers the average slightly). All core crawler models, limits, and classifications are fully tested.
 
+## Discovery Taxonomy and Status
+
+Each family has been assigned one of the following statuses based on the verification findings:
+- `live_observed`: Verified against the live site.
+- `fixture_observed`: Verified against a local HTML fixture.
+- `classifier_only`: Taxonomy target but not yet observed or parsed.
+- `parser_implemented`: Parser is implemented.
+- `parser_unimplemented`: Parser is not yet implemented.
+- `unavailable`: Page family is unavailable.
+
 ## Catalog Outputs
 
 ### SoccerStats
@@ -23,8 +33,27 @@ The Bounded Page-Family Discovery Subsystem has been successfully implemented an
 - **Unknown URLs**: 0
 - **Unmapped Fixture URLs**: 20 (Recorded as `not_attempted` with reason `no_fixture_mapping` because live mode was not run).
 - **Network Requests**: 0
-- **Families Found (15)**: `faq`, `form_table`, `generic_table`, `home_away`, `homepage`, `league_latest`, `league_view`, `legal`, `match_list`, `match_preview`, `matches`, `results`, `round_details`, `statistical_overview`, `wide_table`
-- **Families Missing (5)**: `favourite_stats`, `leagueview_team`, `stats_by_month`, `team_stats`, `trends`
+- **Taxonomy Families (SoccerStats)**:
+  - `faq`: `fixture_observed`
+  - `form_table`: `fixture_observed`
+  - `generic_table`: `fixture_observed`
+  - `home_away`: `fixture_observed`
+  - `homepage`: `fixture_observed`
+  - `league_latest`: `live_observed`
+  - `league_view`: `live_observed`
+  - `leagueview_team`: `live_observed`
+  - `legal`: `fixture_observed`
+  - `match_list`: `fixture_observed`
+  - `match_preview`: `fixture_observed`
+  - `matches`: `live_observed`
+  - `results`: `live_observed`
+  - `round_details`: `live_observed`
+  - `statistical_overview`: `live_observed`
+  - `wide_table`: `fixture_observed`
+  - `favourite_stats`: `classifier_only`
+  - `stats_by_month`: `classifier_only`
+  - `team_stats`: `classifier_only`
+  - `trends`: `classifier_only`
 - **Stop Reason**: `None`
 
 ### Forebet
@@ -38,8 +67,29 @@ The Bounded Page-Family Discovery Subsystem has been successfully implemented an
 - **Unknown URLs**: 0
 - **Unmapped Fixture URLs**: 13 (Recorded as `not_attempted` with reason `no_fixture_mapping`).
 - **Network Requests**: 0
-- **Families Found (17)**: `asian_handicap`, `btts`, `by_country`, `cards`, `corners`, `daily_predictions`, `double_chance`, `finished_predictions`, `goals_market`, `goalscorers`, `half_time`, `half_time_full_time`, `live_predictions`, `result_market`, `tomorrow_predictions`, `top_predictions`, `weekend_predictions`
-- **Families Missing (3)**: `by_league`, `prediction_list`, `values_or_odds`
+- **Taxonomy Families (Forebet)**:
+  - `football_match`: `live_observed`
+  - `match_preview_article`: `live_observed`
+  - `asian_handicap`: `fixture_observed`
+  - `btts`: `fixture_observed`
+  - `by_country`: `fixture_observed`
+  - `cards`: `fixture_observed`
+  - `corners`: `fixture_observed`
+  - `daily_predictions`: `fixture_observed`
+  - `double_chance`: `fixture_observed`
+  - `finished_predictions`: `fixture_observed`
+  - `goals_market`: `fixture_observed`
+  - `goalscorers`: `fixture_observed`
+  - `half_time`: `fixture_observed`
+  - `half_time_full_time`: `fixture_observed`
+  - `live_predictions`: `fixture_observed`
+  - `result_market`: `fixture_observed`
+  - `tomorrow_predictions`: `fixture_observed`
+  - `top_predictions`: `fixture_observed`
+  - `weekend_predictions`: `fixture_observed`
+  - `by_league`: `classifier_only`
+  - `prediction_list`: `fixture_observed`
+  - `values_or_odds`: `classifier_only`
 - **Stop Reason**: `None`
 
 ## System Guarantees

@@ -1,9 +1,5 @@
 # discovery_config.toml
 # Configuration for bounded page-family discovery.
-#
-# This file controls BoundedCrawler limits, policy knobs, fixture maps, and
-# optional seed overrides.  All limits are hard safety limits — the crawler
-# stops cleanly when any limit is reached.
 
 [defaults]
 max_depth = 2
@@ -25,15 +21,6 @@ base_url = "https://www.soccerstats.com"
 [forebet]
 base_url = "https://www.forebet.com"
 
-# ---------------------------------------------------------------------------
-# Fixture maps
-#
-# Maps each seed URL to a local fixture file (relative to tests/fixtures/discovery/).
-# Only these URLs are "fetchable" in fixture mode.  Discovered child links that
-# are not in this map will be recorded as discovery_status=discovered,
-# fetch_status=not_attempted with error="no_fixture_mapping".
-# ---------------------------------------------------------------------------
-
 [fixtures.soccerstats]
 "https://www.soccerstats.com/matches.asp" = "soccerstats/matches_today.html"
 "https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1" = "soccerstats/matches_yesterday.html"
@@ -43,6 +30,17 @@ base_url = "https://www.forebet.com"
 "https://www.soccerstats.com/stats.asp" = "soccerstats/stats_page1.html"
 "https://www.soccerstats.com/faq.asp" = "soccerstats/faq.html"
 "https://www.soccerstats.com/round_details.asp?league=ecuador&mrevid=m160&st1=13&st2=16" = "soccerstats/round_details_example.html"
+"https://www.soccerstats.com/round_details.asp" = "soccerstats/round_details_rich.html"
+"https://www.soccerstats.com/leagueview_team.asp" = "soccerstats/leagueview_team.html"
+"https://www.soccerstats.com/stats.asp?page=10" = "soccerstats/stats_page10.html"
+"https://www.soccerstats.com/homeaway.asp" = "soccerstats/homeaway.html"
+"https://www.soccerstats.com/formtable.asp" = "soccerstats/formtable.html"
+"https://www.soccerstats.com/table.asp?type=projected" = "soccerstats/table_projection.html"
+"https://www.soccerstats.com/trends.asp" = "soccerstats/trends.html"
+"https://www.soccerstats.com/teamstats.asp" = "soccerstats/teamstats.html"
+"https://www.soccerstats.com/latest.asp" = "soccerstats/latest.html"
+"https://www.soccerstats.com/pmatch.asp" = "soccerstats/pmatch.html"
+"https://www.soccerstats.com/leagueview.asp" = "soccerstats/leagueview.html"
 
 [fixtures.forebet]
 "https://www.forebet.com/en/football-tips-and-predictions-for-today" = "forebet/today.html"
@@ -50,16 +48,48 @@ base_url = "https://www.forebet.com"
 "https://www.forebet.com/en/football-tips-and-predictions-for-the-weekend" = "forebet/weekend.html"
 "https://www.forebet.com/en/football-predictions-from-yesterday" = "forebet/finished.html"
 "https://www.forebet.com/en/live-football-tips" = "forebet/live.html"
-
-# ---------------------------------------------------------------------------
-# Seed overrides (optional)
-#
-# When non-empty, the list here replaces the default seeds in seeds.py.
-# When empty (default), the defaults defined in seeds.py are used.
-# ---------------------------------------------------------------------------
+"https://www.forebet.com/en/football/matches/atletico-mineiro-bahia-2418076" = "forebet/match_detail.html"
+"https://www.forebet.com/en/football-match-previews" = "forebet/match_preview_index.html"
+"https://www.forebet.com/en/football-match-previews/28554-atletico-mineiro-seek-home-edge-against-bahia-in-tricky-brasileiro-serie-a-clash" = "forebet/match_preview_article.html"
+"https://www.forebet.com/en/trends" = "forebet/trends.html"
+"https://www.forebet.com/en/trends/top" = "forebet/top_trends.html"
+"https://www.forebet.com/en/livescore" = "forebet/livescore.html"
+"https://www.forebet.com/en/injured-players" = "forebet/injured_players.html"
+"https://www.forebet.com/en/team-comparison" = "forebet/team_comparison.html"
+"https://www.forebet.com/en/teams/some-team" = "forebet/team_page.html"
+"https://www.forebet.com/en/prediction-lists" = "forebet/prediction_list.html"
 
 [seeds.soccerstats]
-# urls = []
+urls = [
+    "https://www.soccerstats.com/matches.asp",
+    "https://www.soccerstats.com/matches.asp?matchday=2&daym=tomorrow&matchdayn=1",
+    "https://www.soccerstats.com/round_details.asp",
+    "https://www.soccerstats.com/round_details.asp?league=ecuador&mrevid=m160&st1=13&st2=16",
+    "https://www.soccerstats.com/latest.asp",
+    "https://www.soccerstats.com/leagueview.asp",
+    "https://www.soccerstats.com/leagueview_team.asp",
+    "https://www.soccerstats.com/pmatch.asp",
+    "https://www.soccerstats.com/stats.asp",
+    "https://www.soccerstats.com/stats.asp?page=10",
+    "https://www.soccerstats.com/homeaway.asp",
+    "https://www.soccerstats.com/formtable.asp",
+    "https://www.soccerstats.com/table.asp",
+    "https://www.soccerstats.com/table.asp?type=projected",
+    "https://www.soccerstats.com/trends.asp",
+    "https://www.soccerstats.com/teamstats.asp"
+]
 
 [seeds.forebet]
-# urls = []
+urls = [
+    "https://www.forebet.com/en/football-tips-and-predictions-for-today",
+    "https://www.forebet.com/en/football-match-previews",
+    "https://www.forebet.com/en/trends",
+    "https://www.forebet.com/en/trends/top",
+    "https://www.forebet.com/en/livescore",
+    "https://www.forebet.com/en/injured-players",
+    "https://www.forebet.com/en/team-comparison",
+    "https://www.forebet.com/en/prediction-lists",
+    "https://www.forebet.com/en/football/matches/atletico-mineiro-bahia-2418076",
+    "https://www.forebet.com/en/football-match-previews/28554-atletico-mineiro-seek-home-edge-against-bahia-in-tricky-brasileiro-serie-a-clash",
+    "https://www.forebet.com/en/teams/some-team"
+]

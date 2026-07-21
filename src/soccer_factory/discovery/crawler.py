@@ -24,8 +24,9 @@ import time
 import uuid
 from collections import deque
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from urllib.parse import urljoin, urlparse, urlunparse, urlencode, parse_qsl
+import urllib.parse
 
 from bs4 import BeautifulSoup
 
@@ -38,39 +39,32 @@ from .classifier import classify_outcome
 # ---------------------------------------------------------------------------
 
 def normalize_url(url: str) -> str:
-    """Return a canonical form of *url* suitable for deduplication.
-
-    Normalization steps:
-    1. Lowercase scheme and hostname.
-    2. Remove fragment.
-    3. Sort query parameters (preserve all — semantically different params
-       must remain distinct, e.g. matchday=1 ≠ matchday=2).
-    4. Remove default port (80 for http, 443 for https).
-    5. Collapse duplicate slashes in path.
-
-    Deliberately does NOT remove query parameters — doing so would collapse
-    semantically distinct URLs such as:
-        /matches.asp?matchday=1   ≠   /matches.asp?matchday=2
+    """Normalize URL by stripping fragments and deterministic sorting of allowed query params.
+    
+    Allowed params to preserve:
+    league, stats, mrevid, st1, st2, page, tid, matchday, listing, ms
     """
-    p = urlparse(url)
+    p = urllib.parse.urlparse(url)
     scheme = p.scheme.lower()
     netloc = p.netloc.lower()
-
+    
     # Strip default ports
-    if ":" in netloc:
-        host, port = netloc.rsplit(":", 1)
-        if (scheme == "http" and port == "80") or (scheme == "https" and port == "443"):
-            netloc = host
+    if scheme == "http" and netloc.endswith(":80"):
+        netloc = netloc[:-3]
+    elif scheme == "https" and netloc.endswith(":443"):
+        netloc = netloc[:-4]
 
-    # Collapse path
-    path = p.path or "/"
+    query_dict = urllib.parse.parse_qsl(p.query)
+    query_dict = sorted(query_dict)
+    new_query = urllib.parse.urlencode(query_dict)
 
-    # Sort query params (stable sort preserves param order within same key)
-    query = urlencode(sorted(parse_qsl(p.query, keep_blank_values=True)))
-
-    # Drop fragment
-    canonical = urlunparse((scheme, netloc, path, p.params, query, ""))
-    return canonical
+    new_p = p._replace(
+        scheme=scheme,
+        netloc=netloc,
+        query=new_query,
+        fragment=""
+    )
+    return urllib.parse.urlunparse(new_p)
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +92,7 @@ def extract_links(html: bytes, base_url: str) -> List[str]:
         href = href.strip()
         if not href or href.startswith("#"):
             continue
-        absolute = urljoin(base_url, href)
+        absolute = urllib.parse.urljoin(base_url, href)
         links.append(absolute)
     return links
 
@@ -107,20 +101,35 @@ def extract_links(html: bytes, base_url: str) -> List[str]:
 # Page diagnostics
 # ---------------------------------------------------------------------------
 
-def diagnose_page(html: bytes) -> dict[str, object]:
-    """Extract lightweight structural metrics from an HTML page."""
-    try:
-        soup = BeautifulSoup(html, "html.parser")
-    except Exception:
-        return {"tables": 0, "links": 0, "forms": 0, "scripts": 0, "title": None}
-
+def diagnose_page(html: str) -> Dict[str, Any]:
+    """Extract basic descriptive metrics about the page structure.
+    
+    Note: Navigation links do not imply data fields exist. This function uses simple heuristics.
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    tables = soup.find_all("table")
+    links = soup.find_all("a", href=True)
+    forms = soup.find_all("form")
+    scripts = soup.find_all("script")
     title_tag = soup.find("title")
+
+    # Honest diagnostics heuristics
+    navigation_labels = []
+    text_lower = html.lower()
+    if "goal timing" in text_lower:
+        navigation_labels.append("Goal timing")
+    if "over/under" in text_lower:
+        navigation_labels.append("Over/Under")
+        
     return {
-        "tables": len(soup.find_all("table")),
-        "links": len(soup.find_all("a", href=True)),
-        "forms": len(soup.find_all("form")),
-        "scripts": len(soup.find_all("script")),
-        "title": title_tag.get_text(strip=True) if title_tag else None,
+        "tables": len(tables),
+        "links": len(links),
+        "forms": len(forms),
+        "scripts": len(scripts),
+        "title": title_tag.text.strip() if title_tag else "",
+        "navigation_labels": navigation_labels,
+        "data_fields": [],
+        "market_fields": []
     }
 
 
@@ -328,8 +337,7 @@ class BoundedCrawler:
             # Restricted links — record but never fetch
             if category == "restricted":
                 entry.discovery_status = "blocked"
-                entry.fetch_status = "blocked"
-                entry.restricted = True
+                entry.fetch_status = "restricted"
                 manifest.pages_restricted += 1
                 entries.append(entry)
                 continue
@@ -443,6 +451,11 @@ class BoundedCrawler:
                     entry.forms_found = int(diag["forms"])    # type: ignore
                     entry.scripts_found = int(diag["scripts"]) # type: ignore
                     entry.page_title = diag["title"]           # type: ignore
+                    entry.navigation_labels_detected = diag["navigation_labels"]
+                    entry.data_fields_detected = diag["data_fields"]
+                    entry.market_fields_detected = diag["market_fields"]
+                    entry.detection_method = "heuristic"
+                    entry.parser_status = "not_checked"
                     entry.parse_status = "ok"
                     entry.discovery_status = "parsed"
                     manifest.pages_parsed += 1

@@ -1,8 +1,9 @@
 import pytest
-from src.soccer_factory.discovery.policy import is_restricted, is_same_domain, is_valid_scheme
-from src.soccer_factory.discovery.classifier import classify, classify_outcome
-from src.soccer_factory.discovery.crawler import normalize_url, CircuitBreaker, CircuitOpenError
-from src.soccer_factory.discovery.models import CatalogEntry
+from datetime import datetime, timezone
+from src.soccer_factory.discovery.policy import is_allowed, is_restricted, is_same_domain, is_valid_scheme
+from src.soccer_factory.discovery.classifier import classify, classify_outcome, all_families
+from src.soccer_factory.discovery.crawler import BoundedCrawler, normalize_url, CircuitBreaker, RateLimiter, CircuitOpenError
+from src.soccer_factory.discovery.models import DiscoveryConfig, CatalogEntry, RunManifest
 from src.soccer_factory.discovery.catalog import CatalogStore
 
 class TestURLHandling:
@@ -55,10 +56,12 @@ class TestClassification:
         assert classify("https://soccerstats.com/pmatch.asp?league=england", "soccerstats") == "match_preview"
         assert classify("https://soccerstats.com/latest.asp", "soccerstats") == "league_latest"
         assert classify("https://soccerstats.com/leagueview.asp", "soccerstats") == "league_view"
-        assert classify("https://soccerstats.com/round_details.asp", "soccerstats") == "round_details"
+        assert classify("https://soccerstats.com/round_details.asp?league=ecuador&mrevid=m160&st1=13&st2=16", "soccerstats") == "round_details"
         assert classify("https://soccerstats.com/results.asp", "soccerstats") == "results"
         assert classify("https://soccerstats.com/stats.asp", "soccerstats") == "statistical_overview"
         assert classify("https://soccerstats.com/faq.asp", "soccerstats") == "faq"
+        assert classify("https://soccerstats.com/stats.asp?type=over_under", "soccerstats") == "over_under"
+        assert classify("https://soccerstats.com/stats.asp?type=home_advantage", "soccerstats") == "home_advantage"
 
     def test_forebet_families(self):
         assert classify("https://forebet.com/en/football-tips-and-predictions-for-today", "forebet") == "daily_predictions"
@@ -66,6 +69,17 @@ class TestClassification:
         assert classify("https://forebet.com/en/football-tips-and-predictions-for-the-weekend", "forebet") == "weekend_predictions"
         assert classify("https://forebet.com/en/football-predictions-from-yesterday", "forebet") == "finished_predictions"
         assert classify("https://forebet.com/en/live-football-tips", "forebet") == "live_predictions"
+        assert classify("https://forebet.com/en/football/matches/atletico-mineiro-bahia-2418076", "forebet") == "football_match"
+        assert classify("https://forebet.com/en/football-match-previews/28554-atletico-mineiro-seek-home-edge-against-bahia-in-tricky-brasileiro-serie-a-clash", "forebet") == "match_preview_article"
+        assert classify("https://forebet.com/en/football-match-previews", "forebet") == "match_preview_index"
+        assert classify("https://forebet.com/en/livescore", "forebet") == "livescore"
+        assert classify("https://forebet.com/en/injured-players", "forebet") == "injured_players"
+        assert classify("https://forebet.com/en/team-comparison", "forebet") == "team_comparison"
+        
+    def test_values_and_non_soccer(self):
+        assert classify_outcome("https://forebet.com/en/value-bets", "forebet") == ("values_or_odds", "values_or_odds")
+        assert classify_outcome("https://forebet.com/en/basketball", "forebet") == ("non_soccer", "non_soccer")
+        assert classify_outcome("https://forebet.com/en/tennis", "forebet") == ("non_soccer", "non_soccer")
         
     def test_unknown_family(self):
         assert classify("https://soccerstats.com/some-unknown-path.asp", "soccerstats") == "unknown"
