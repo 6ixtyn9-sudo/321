@@ -1,10 +1,12 @@
-from typing import Dict, Type
+from typing import Dict, Type, Callable, TypeVar
 from .base import BaseCollector
+
+T = TypeVar("T", bound=BaseCollector)
 
 _COLLECTORS: Dict[str, Type[BaseCollector]] = {}
 
-def register_collector(name: str):
-    def decorator(cls: Type[BaseCollector]):
+def register_collector(name: str) -> Callable[[Type[T]], Type[T]]:
+    def decorator(cls: Type[T]) -> Type[T]:
         _COLLECTORS[name] = cls
         return cls
     return decorator

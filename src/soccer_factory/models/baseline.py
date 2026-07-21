@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 import uuid
 from datetime import datetime
 from ..schemas.features import Features

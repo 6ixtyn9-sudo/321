@@ -1,11 +1,8 @@
-from typing import List, Any
+from typing import List
 import json
 from .db import Warehouse
 from ..schemas.snapshots import RawSnapshot
 from ..schemas.matches import Match
-from ..schemas.predictions import Prediction, SourceForecast
-from ..schemas.features import Features
-from ..schemas.results import Result, Grading
 
 def ingest_snapshots(warehouse: Warehouse, snapshots: List[RawSnapshot]) -> None:
     conn = warehouse.get_connection()

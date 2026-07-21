@@ -5,8 +5,6 @@ def evaluate_confidence(features: Features) -> Tuple[str, List[str]]:
     """
     Evaluates confidence grade (A, B, C, X) based on sample sizes and data quality.
     """
-    reasons = []
-    
     if features.sample_size_home is None or features.sample_size_away is None:
         return "X", ["Missing sample size"]
         

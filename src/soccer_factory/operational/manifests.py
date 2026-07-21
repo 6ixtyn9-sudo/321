@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 from typing import List, Optional, Dict
-import json
 from pathlib import Path
 
 class RunManifest(BaseModel):

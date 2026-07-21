@@ -1,6 +1,5 @@
-import pytest
 from src.soccer_factory.identity.normalize import normalize_team_name
-from src.soccer_factory.identity.matcher import match_teams, similarity
+from src.soccer_factory.identity.matcher import match_teams
 
 def test_normalize_team_name():
     assert normalize_team_name("Manchester United FC") == "manchester united"

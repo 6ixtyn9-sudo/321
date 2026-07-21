@@ -1,6 +1,5 @@
 from playwright.sync_api import sync_playwright
 from typing import Tuple, Dict, Optional
-import time
 
 class PlaywrightFallback:
     def __init__(self, user_agent: str, enabled: bool = False):

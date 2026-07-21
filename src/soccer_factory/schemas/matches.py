@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Dict
 
 class Match(BaseModel):
     model_config = ConfigDict(strict=True)

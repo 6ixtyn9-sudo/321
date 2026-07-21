@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime
 from src.soccer_factory.schemas.features import Features
 from src.soccer_factory.models.baseline import generate_predictions

@@ -1,4 +1,4 @@
-from typing import List, Tuple, Dict, Any
+from typing import Tuple, Dict, Optional
 from .normalize import normalize_team_name
 import difflib
 
@@ -6,7 +6,7 @@ def similarity(s1: str, s2: str) -> float:
     """Returns sequence matcher ratio between two strings."""
     return difflib.SequenceMatcher(None, s1, s2).ratio()
 
-def match_teams(team_a: str, team_b: str, aliases: Dict[str, str] = None) -> Tuple[bool, float, str]:
+def match_teams(team_a: str, team_b: str, aliases: Optional[Dict[str, str]] = None) -> Tuple[bool, float, str]:
     """
     Attempts to match two team names.
     Returns:

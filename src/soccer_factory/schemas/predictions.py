@@ -19,16 +19,17 @@ class Prediction(BaseModel):
     reasons: List[str] = Field(default_factory=list)
     data_quality: str
 
-class SourceForecast(BaseModel):
+class SourceObservation(BaseModel):
     model_config = ConfigDict(strict=True)
 
     source: str
-    match_id: str
+    match_identity: str
     market: str
     selection: str
-    predicted_score_if_available: Optional[str] = None
-    collected_at: datetime
+    predicted_score: Optional[str] = None
+    probability_if_present: Optional[float] = None
     source_status: str
+    collected_at: datetime
     source_url: str
     parser_version: str
     is_pre_match: bool

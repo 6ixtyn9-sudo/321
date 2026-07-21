@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Tuple
+from datetime import datetime
 
 class BaseCollector(ABC):
     
@@ -15,9 +16,9 @@ class BaseCollector(ABC):
 class BaseParser(ABC):
     
     @abstractmethod
-    def parse_matches(self, content: bytes) -> list:
+    def parse_matches(self, content: bytes, collected_at: datetime) -> list[object]:
         pass
         
     @abstractmethod
-    def parse_predictions(self, content: bytes) -> list:
+    def parse_predictions(self, content: bytes, collected_at: datetime) -> list[object]:
         pass

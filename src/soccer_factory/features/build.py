@@ -1,4 +1,4 @@
-from typing import Dict, List, Any
+from typing import Dict, Any
 from datetime import datetime
 from ..schemas.features import Features
 from ..schemas.matches import Match

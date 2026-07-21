@@ -1,6 +1,4 @@
-from typing import List, Optional
 from datetime import datetime
-import uuid
 from ..schemas.predictions import Prediction
 from ..schemas.results import Result, Grading
 
@@ -25,7 +23,7 @@ def grade_prediction(prediction: Prediction, result: Result, grading_source: str
     if prediction.market == "1X2":
         correct = (prediction.selection == actual_outcome)
     elif prediction.market == "Double chance":
-        correct = (actual_outcome in prediction.selection)
+        correct = (actual_outcome is not None and actual_outcome in prediction.selection)
     elif prediction.market == "Over/Under 2.5":
         if prediction.selection == "Over 2.5":
             correct = (result.total_goals is not None and result.total_goals > 2)
