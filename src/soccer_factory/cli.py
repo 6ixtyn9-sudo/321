@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from src.soccer_factory.sources.soccerstats.parser import SoccerStatsParser
 from src.soccer_factory.sources.forebet.parser import ForebetParser
+from src.soccer_factory.sources.http_collector import HttpCollector
 from src.soccer_factory.identity.matcher import match_teams
 from src.soccer_factory.models.baseline import generate_predictions
 from src.soccer_factory.schemas.features import Features
@@ -37,6 +38,9 @@ def parse_args() -> argparse.Namespace:
     subparsers.add_parser("report", parents=[parent_parser])
     subparsers.add_parser("health-check")
     subparsers.add_parser("run-daily", parents=[parent_parser])
+
+    smoke_parser = subparsers.add_parser("smoke-test", parents=[parent_parser])
+    smoke_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
 
     return parser.parse_args()
 
@@ -203,6 +207,40 @@ def do_health_check() -> None:
     print("- warning count: 0")
     print("- error count: 0")
 
+def do_smoke_test(args: argparse.Namespace) -> None:
+    if not getattr(args, "confirm_live", False):
+        print("Error: smoke-test requires --confirm-live flag to perform live HTTP calls.", file=sys.stderr)
+        sys.exit(1)
+        
+    source = getattr(args, "source", "soccerstats")
+    date_str = getattr(args, "date", None) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    setup_dirs()
+    
+    collector = HttpCollector(user_agent="SoccerFactory-SmokeTest/1.0", delay=2.0, max_requests=2)
+    url = "https://www.soccerstats.com/matches.asp?matchday=1" if source == "soccerstats" else "https://www.forebet.com/en/football-tips-and-predictions-for-today"
+        
+    print(f"Executing smoke-test for source={source}, url={url}...")
+    code, content, headers, err = collector.fetch(url)
+    
+    if code != 200 or not content:
+        print(f"Smoke test FAILED: HTTP status={code}, error={err}", file=sys.stderr)
+        sys.exit(1)
+        
+    snap_path = os.path.join(DATA_RAW, f"smoke_{source}_{date_str}.html")
+    with open(snap_path, "wb") as f:
+        f.write(content)
+        
+    dt = datetime.now(timezone.utc)
+    if source == "soccerstats":
+        ss_parser = SoccerStatsParser()
+        matches = ss_parser.parse_matches(content, dt)
+        print(f"Smoke test SUCCESS: fetched {len(content)} bytes. Parsed {len(matches)} matches from SoccerStats.")
+    else:
+        fb_parser = ForebetParser()
+        matches = fb_parser.parse_matches(content, dt)
+        preds = fb_parser.parse_predictions(content, dt)
+        print(f"Smoke test SUCCESS: fetched {len(content)} bytes. Parsed {len(matches)} matches and {len(preds)} observations from Forebet.")
+
 def main() -> None:
     args = parse_args()
     check_mode(args)
@@ -225,6 +263,8 @@ def main() -> None:
         do_grade(args)
     elif args.command == "report":
         do_report(args)
+    elif args.command == "smoke-test":
+        do_smoke_test(args)
     elif args.command == "run-daily":
         do_collect(args)
         do_validate(args)

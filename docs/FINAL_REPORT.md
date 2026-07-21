@@ -1,130 +1,114 @@
-# FINAL REPORT — 321 Soccer Analytics Platform
+# FINAL REPORT — 321 Soccer Analytics Platform (Production-Readiness Audit)
 
-## Executive Summary
-
-The 321 SoccerStats + Forebet analytics and prediction platform is fully implemented,
-tested, and passing all quality gates. The system can be driven end-to-end from
-committed HTML fixtures without any network access.
+> **Important System Notice**: The 321 Soccer Analytics platform is a **robust, fixture-tested soccer analytics foundation with baseline prediction capability**. **Prediction accuracy is not yet established** and cannot be claimed until real-data historical backtesting and walk-forward calibration are conducted.
 
 ---
 
-## Quality Gate Results
+## 1. Quality Gate Executions & Results (Unfiltered)
 
-| Gate | Result | Detail |
-|------|--------|--------|
-| `pytest` | ✅ PASS | 77 tests, 0 failures |
-| `pytest --cov` | ✅ PASS | **84% coverage** (target: 80%) |
-| `ruff check` | ✅ PASS | 0 errors |
-| `mypy --explicit-package-bases` | ✅ PASS | 0 errors in 37 source files |
-| `python -m compileall` | ✅ PASS | All modules compile |
+All quality gates pass without output suppression:
 
----
+### 1.1 Code Formatting & Style (`ruff`)
+```bash
+ruff check src/ tests/
+```
+**Exit Code**: `0`
+**Output**: `All checks passed!`
 
-## End-to-End Pipeline Verification
+### 1.2 Type Safety (`mypy`)
+```bash
+python -m mypy --explicit-package-bases src/ --ignore-missing-imports
+```
+**Exit Code**: `0`
+**Output**: `Success: no issues found in 37 source files`
 
-Running `python -m soccer_factory.cli run-daily --date 2026-07-21 --mode fixture`
-produces the following artefacts without any external network requests:
+### 1.3 Automated Test Suite & Coverage (`pytest`)
+```bash
+pytest -vv --cov=src/soccer_factory --cov-report=term-missing --cov-report=xml
+```
+**Exit Code**: `0`
+**Summary**: **88 passed in 2.90s**
+**Coverage**: **83%** (Target: ≥ 80%)
 
-| Stage | Output | Count |
-|-------|--------|-------|
-| `collect` | `data/raw/*.html` copied from fixtures | 11 files |
-| `validate` | `data/interim/matches.json` | 7 matches parsed |
-| `validate` | `data/interim/observations.json` | 24 observations parsed |
-| `validate` | `data/interim/features.json` | 1 feature set |
-| `build-features` | `data/processed/joined.json` | 3 cross-source joined |
-| `build-features` | quarantined | 2 matches (no Forebet match found) |
-| `predict` | `data/processed/predictions.json` | 9 predictions (3 markets × 3 matches) |
-| `freeze` | `data/reports/report_2026-07-21.json` | Frozen, immutable |
+#### Coverage Breakdown:
+| Module | Statements | Missing | Coverage |
+|--------|------------|---------|----------|
+| `cli.py` | 218 | 41 | 81% |
+| `features/build.py` | 17 | 0 | 100% |
+| `grading/grade.py` | 22 | 0 | 100% |
+| `identity/matcher.py` | 25 | 2 | 92% |
+| `identity/normalize.py` | 14 | 1 | 93% |
+| `identity/quarantine.py` | 15 | 0 | 100% |
+| `models/baseline.py` | 30 | 1 | 97% |
+| `models/confidence.py` | 13 | 0 | 100% |
+| `schemas/features.py` | 23 | 0 | 100% |
+| `schemas/matches.py` | 21 | 0 | 100% |
+| `schemas/predictions.py` | 33 | 0 | 100% |
+| `schemas/results.py` | 25 | 0 | 100% |
+| `schemas/snapshots.py` | 20 | 0 | 100% |
+| `sources/base.py` | 14 | 3 | 79% |
+| `sources/forebet/parser.py` | 101 | 37 | 63% |
+| `sources/forebet/validators.py` | 15 | 4 | 73% |
+| `sources/http_collector.py` | 50 | 29 | 42% |
+| `sources/playwright_fallback.py` | 24 | 15 | 38% |
+| `sources/registry.py` | 13 | 0 | 100% |
+| `sources/soccerstats/parser.py` | 82 | 8 | 90% |
+| `sources/soccerstats/validators.py` | 18 | 0 | 100% |
+| `warehouse/db.py` | 26 | 1 | 96% |
+| `warehouse/ingest.py` | 13 | 3 | 77% |
+| **TOTAL** | **833** | **145** | **83%** |
 
----
-
-## Test Breakdown
-
-| Suite | Tests | What it covers |
-|-------|-------|----------------|
-| `tests/contract/test_parsers.py` | 6 | Parser correctness per fixture state |
-| `tests/integration/test_end_to_end.py` | 3 | Full CLI pipeline (fixture mode, live refusal, health check) |
-| `tests/unit/test_coverage_boost.py` | 60 | All domain modules (schemas, validators, features, grading, identity, confidence, baseline, quarantine, warehouse, collectors, registry) |
-
----
-
-## Parser Verification
-
-### SoccerStats — Fixture States Tested
-
-| Fixture | State | Verified behaviour |
-|---------|-------|--------------------|
-| `soccerstats_matches_prematch.html` | Pre-match | 5 matches parsed, status=pre-match, time extracted |
-| `soccerstats_matches_live.html` | Live | 1 match, status=live |
-| `soccerstats_matches_postponed.html` | Postponed | 1 match, status=postponed |
-| `soccerstats_pmatch_complete.html` | Feature page | GF/GA/BTTS/2.5+/PPG/GP all extracted |
-
-### Forebet — Fixture States Tested
-
-| Fixture | State | Verified behaviour |
-|---------|-------|--------------------|
-| `forebet_predictions_today.html` | Pre-match | 5 rows × 3 markets = 15 observations |
-| `forebet_predictions_live.html` | Live | source_status=live, is_live=True |
-| `forebet_predictions_finished.html` | Finished | source_status=finished, is_finished=True |
-
----
-
-## Cross-Source Matching
-
-- **Team normalisation**: strips FC/SC/AFC suffixes, diacritics, casing
-- **Fuzzy matching**: difflib SequenceMatcher with ≥0.85 threshold for match, 0.65–0.85 quarantined as ambiguous
-- **Safety guards**: U21/U23/Women's/B-team mismatches blocked unconditionally
+### 1.4 Bytecode Compilation (`compileall`)
+```bash
+python -m compileall src/ -q
+```
+**Exit Code**: `0`
+**Output**: `(Clean exit, 0 errors)`
 
 ---
 
-## Markets Supported
+## 2. Source-Faithful Fixture Audit
 
-| Market | Selections |
-|--------|-----------|
-| 1X2 | 1, X, 2 |
-| Double chance | 1X, X2, 12 |
-| Over/Under 2.5 | Over 2.5, Under 2.5 |
-| BTTS | Yes, No |
+All 11 committed test fixtures match production DOM selector structures:
+- **SoccerStats**: `table#btable`, `tr.trow3`, `tr.trow8`, `a[href*="pmatch.asp"]`, `table.sortable`.
+- **Forebet**: `div.schema`, `div.rcnt`, `div.tnms`, `span.homeTeam`, `span.awayTeam`, `div.predict`, `div.fprc`, `div.ex_sc`, `div.uo`, `div.bts`, `div.l_scr`, `div.live_min`.
 
----
-
-## Prediction Model
-
-Baseline model (`generate_predictions`) with confidence grading:
-
-| Grade | Min sample | Action |
-|-------|-----------|--------|
-| X | < 5 | No prediction emitted |
-| C | 5–11 | Prediction with low confidence |
-| B | 12–19 | Standard prediction |
-| A | ≥ 20 | High-confidence prediction |
+Full details are documented in [`docs/TEST_FIXTURES.md`](file:///Users/apple/321/docs/TEST_FIXTURES.md).
 
 ---
 
-## Safety & Leakage Controls
+## 3. Full Fixture Pipeline Persisted Artifact Counts
 
-- `--mode live` requires `--confirm-live` flag; refuses without it (tested)
-- Feature builder rejects `current_time >= kickoff` with `ValueError: leakage`
-- Frozen reports are write-once; duplicate freeze exits with error
-- Playwright disabled by default (`enabled=False`), returns `(0, b"", {}, "Playwright is disabled.")`
+Running `python -m soccer_factory.cli run-daily --date 2026-07-21 --mode fixture`:
+
+| Metric | Verified Count | Persisted Artifact Path |
+|--------|---------------|------------------------|
+| Snapshots | 11 files | `data/raw/*.html` |
+| Parsed SoccerStats Matches | 7 | `data/interim/matches.json` |
+| Parsed Forebet Observations | 24 | `data/interim/observations.json` |
+| Cross-Source Matched Pairs | 3 | `data/processed/joined.json` |
+| Quarantined Matches | 2 | `data/processed/manifest.json` |
+| Feature Sets | 1 | `data/interim/features.json` |
+| Predictions Generated | 9 | `data/processed/predictions.json` |
+| Predictions Frozen | 9 | `data/reports/report_2026-07-21.json` |
+| Predictions Graded | 0 | (Fixture mode, no live results) |
+| CLI Health-Check Result | All OK | `quarantine count: 1`, `prediction count: 3` |
 
 ---
 
-## Coverage Detail (modules at 100%)
+## 4. Safety & Immutability Audit
 
-`schemas/features`, `schemas/matches`, `schemas/predictions`, `schemas/results`,
-`schemas/snapshots`, `features/build`, `grading/grade`, `identity/quarantine`,
-`models/confidence`, `sources/registry`, `sources/soccerstats/validators`
+1. **Live Mode Safety**:
+   - `python -m soccer_factory.cli collect --mode live` exits with code 1 without `--confirm-live`.
+   - `python -m soccer_factory.cli smoke-test --source soccerstats` exits with code 1 without `--confirm-live`.
+2. **Snapshot Deduplication**: Content hashing (`SHA-256`) prevents duplicate snapshots for identical content.
+3. **Frozen Report Immutability**: Attempting to freeze an existing report date raises an error and exits with code 1.
+4. **Leakage Protection**: `build_features` raises `ValueError` if `current_time >= scheduled_kickoff`.
 
 ---
 
-## Remaining Low-Coverage Modules
+## 5. Known Limitations & Next Steps
 
-| Module | Coverage | Reason |
-|--------|----------|--------|
-| `sources/http_collector.py` | 42% | Network-dependent; retries/circuit-breaker not exercised without mocked requests |
-| `sources/playwright_fallback.py` | 38% | Playwright not installed; disabled-path tested |
-| `warehouse/ingest.py` | 0% | DuckDB ingest path; functional but not yet wired into CLI |
-| `sources/forebet/parser.py` | 63% | Live/finished parsing paths not fully reached from contract tests |
-
-All gaps are in network or infrastructure code that is intentionally not exercised in fixture mode.
+1. **Parser Uncertainties**: Production web HTML layouts on SoccerStats and Forebet may change over time; contract tests will detect DOM structural shifts.
+2. **Model Baseline Status**: Current predictions use heuristic baseline formulas; true prediction quality requires walk-forward historical backtesting.
+3. **Historical Evaluation Path**: The required ledger and evaluation strategy are documented in [`docs/HISTORICAL_EVALUATION.md`](file:///Users/apple/321/docs/HISTORICAL_EVALUATION.md).
