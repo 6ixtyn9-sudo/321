@@ -68,10 +68,10 @@ def test_forebet_predictions_today():
     m1 = [o for o in obs if o.match_identity == "Manchester United FC vs Arsenal FC"]
     assert len(m1) == 3
     for o in m1:
-        if o.market == "1X2":
+        if o.market == "1x2":
             assert o.selection == "1"
             assert o.probability_if_present == 0.5
-        elif o.market == "Over/Under 2.5":
+        elif o.market == "over25":
             assert o.selection == "Over 2.5"
             assert o.probability_if_present is None
             

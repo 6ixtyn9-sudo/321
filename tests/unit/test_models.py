@@ -1,13 +1,19 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from src.soccer_factory.schemas.features import Features
+from src.soccer_factory.schemas.predictions import CANONICAL_MARKETS
 from src.soccer_factory.models.baseline import generate_predictions
+
+
+NOW = datetime(2026, 7, 21, 10, 0, tzinfo=timezone.utc)
+FUTURE = datetime(2026, 7, 21, 15, 0, tzinfo=timezone.utc)
+
 
 def test_models_generate_only_approved_markets():
     features = Features(
         match_id="test1",
-        collected_at=datetime.now(),
-        feature_cutoff=datetime.now(),
-        match_kickoff=datetime.now(),
+        collected_at=NOW,
+        feature_cutoff=NOW,
+        match_kickoff=FUTURE,
         data_type="pre_match",
         source_status="available",
         home_ppg=2.0,
@@ -23,9 +29,12 @@ def test_models_generate_only_approved_markets():
     preds = generate_predictions(features)
     
     markets = [p.market for p in preds]
-    assert "1X2" in markets
-    assert "Over/Under 2.5" in markets
-    assert "BTTS" in markets
+    assert len(preds) == 4
+    assert sorted(markets) == sorted(CANONICAL_MARKETS)
+    assert "1x2" in markets
+    assert "double_chance" in markets
+    assert "over25" in markets
+    assert "btts" in markets
     
     # Ensure disabled markets are not generated
     assert "Corners" not in markets
@@ -35,12 +44,13 @@ def test_models_generate_only_approved_markets():
     # Confidence should be A due to sample size >= 20
     assert preds[0].confidence_grade == "A"
 
+
 def test_models_return_no_prediction_for_small_sample():
     features = Features(
         match_id="test2",
-        collected_at=datetime.now(),
-        feature_cutoff=datetime.now(),
-        match_kickoff=datetime.now(),
+        collected_at=NOW,
+        feature_cutoff=NOW,
+        match_kickoff=FUTURE,
         data_type="pre_match",
         source_status="available",
         home_ppg=2.0,

@@ -82,7 +82,7 @@ class TestSchemas:
             match_identity="Team A vs Team B",
             source="forebet",
             source_status="pre-match",
-            market="1X2",
+            market="1x2",
             selection="1",
             probability_if_present=0.55,
             collected_at=NOW,
@@ -101,7 +101,7 @@ class TestSchemas:
             match_identity="Team A vs Team B",
             source="forebet",
             source_status="live",
-            market="1X2",
+            market="1x2",
             selection="1",
             collected_at=NOW,
             source_url="https://forebet.com/matches",
@@ -260,20 +260,20 @@ class TestGrading:
         return Result(**defaults)
 
     def test_grade_1x2_home_correct(self):
-        g = grade_prediction(self._pred("1X2", "1"), self._result(match_outcome="1"), "src")
+        g = grade_prediction(self._pred("1x2", "1"), self._result(match_outcome="1"), "src")
         assert g.correct is True
 
     def test_grade_1x2_away_incorrect(self):
-        g = grade_prediction(self._pred("1X2", "2"), self._result(match_outcome="1"), "src")
+        g = grade_prediction(self._pred("1x2", "2"), self._result(match_outcome="1"), "src")
         assert g.correct is False
 
     def test_grade_1x2_draw_correct(self):
-        g = grade_prediction(self._pred("1X2", "X"), self._result(match_outcome="X"), "src")
+        g = grade_prediction(self._pred("1x2", "X"), self._result(match_outcome="X"), "src")
         assert g.correct is True
 
     def test_grade_over25_over_correct(self):
         g = grade_prediction(
-            self._pred("Over/Under 2.5", "Over 2.5"),
+            self._pred("over25", "Over 2.5"),
             self._result(total_goals=3, match_outcome="1"),
             "src",
         )
@@ -281,7 +281,7 @@ class TestGrading:
 
     def test_grade_over25_under_correct(self):
         g = grade_prediction(
-            self._pred("Over/Under 2.5", "Under 2.5"),
+            self._pred("over25", "Under 2.5"),
             self._result(total_goals=2, match_outcome="X"),
             "src",
         )
@@ -289,7 +289,7 @@ class TestGrading:
 
     def test_grade_over25_under_incorrect(self):
         g = grade_prediction(
-            self._pred("Over/Under 2.5", "Under 2.5"),
+            self._pred("over25", "Under 2.5"),
             self._result(total_goals=4, match_outcome="1"),
             "src",
         )
@@ -297,7 +297,7 @@ class TestGrading:
 
     def test_grade_btts_yes_correct(self):
         g = grade_prediction(
-            self._pred("BTTS", "Yes"),
+            self._pred("btts", "Yes"),
             self._result(btts_result=True, match_outcome="1"),
             "src",
         )
@@ -305,7 +305,7 @@ class TestGrading:
 
     def test_grade_btts_no_correct(self):
         g = grade_prediction(
-            self._pred("BTTS", "No"),
+            self._pred("btts", "No"),
             self._result(btts_result=False, match_outcome="1"),
             "src",
         )
@@ -313,7 +313,7 @@ class TestGrading:
 
     def test_grade_double_chance_1x_correct(self):
         g = grade_prediction(
-            self._pred("Double chance", "1X"),
+            self._pred("double_chance", "1X"),
             self._result(match_outcome="1"),
             "src",
         )
@@ -321,7 +321,7 @@ class TestGrading:
 
     def test_grade_double_chance_12_correct(self):
         g = grade_prediction(
-            self._pred("Double chance", "12"),
+            self._pred("double_chance", "12"),
             self._result(match_outcome="2"),
             "src",
         )
@@ -329,7 +329,7 @@ class TestGrading:
 
     def test_grade_double_chance_x2_incorrect(self):
         g = grade_prediction(
-            self._pred("Double chance", "X2"),
+            self._pred("double_chance", "X2"),
             self._result(match_outcome="1"),
             "src",
         )
@@ -337,7 +337,7 @@ class TestGrading:
 
     def test_grade_unresolved_postponed(self):
         g = grade_prediction(
-            self._pred("1X2", "1"),
+            self._pred("1x2", "1"),
             self._result(status="postponed"),
             "src",
         )
@@ -346,7 +346,7 @@ class TestGrading:
 
     def test_grade_final_score_formatted(self):
         g = grade_prediction(
-            self._pred("1X2", "1"),
+            self._pred("1x2", "1"),
             self._result(home_score=2, away_score=1, match_outcome="1"),
             "src",
         )
@@ -473,9 +473,10 @@ class TestBaseline:
     def test_generates_all_expected_markets(self):
         preds = generate_predictions(self._f())
         markets = {p.market for p in preds}
-        assert "1X2" in markets
-        assert "Over/Under 2.5" in markets
-        assert "BTTS" in markets
+        assert "1x2" in markets
+        assert "double_chance" in markets
+        assert "over25" in markets
+        assert "btts" in markets
 
     def test_all_probabilities_in_range(self):
         for p in generate_predictions(self._f()):
@@ -483,7 +484,7 @@ class TestBaseline:
 
     def test_home_advantage_in_1x2(self):
         preds = generate_predictions(self._f())
-        p_1x2 = next(p for p in preds if p.market == "1X2")
+        p_1x2 = next(p for p in preds if p.market == "1x2")
         assert p_1x2.selection == "1"  # home PPG significantly higher
 
     def test_no_predictions_for_very_low_sample(self):

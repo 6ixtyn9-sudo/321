@@ -1,6 +1,6 @@
 """
 Baseline model monotonicity and sanity tests:
-1. Stronger home PPG produces stronger home 1X2 probability.
+1. Stronger home PPG produces stronger home 1x2 probability.
 2. Higher combined Over 2.5 rate increases (or preserves) Over 2.5 probability.
 3. Missing data reduces confidence or emits no prediction (grade X).
 4. All-equal input produces neutral probability (e.g. 0.35/0.30/0.35) or low confidence.
@@ -45,8 +45,8 @@ class TestBaselineSanity:
         preds_equal = generate_predictions(f_equal)
         preds_strong = generate_predictions(f_strong_home)
 
-        pred_1x2_equal = next(p for p in preds_equal if p.market == "1X2")
-        pred_1x2_strong = next(p for p in preds_strong if p.market == "1X2")
+        pred_1x2_equal = next(p for p in preds_equal if p.market == "1x2")
+        pred_1x2_strong = next(p for p in preds_strong if p.market == "1x2")
 
         # Home selection should be "1" for strong home PPG
         assert pred_1x2_strong.selection == "1"
@@ -59,8 +59,8 @@ class TestBaselineSanity:
         preds_low = generate_predictions(f_low)
         preds_high = generate_predictions(f_high)
 
-        p_over_low = next(p for p in preds_low if p.market == "Over/Under 2.5")
-        p_over_high = next(p for p in preds_high if p.market == "Over/Under 2.5")
+        p_over_low = next(p for p in preds_low if p.market == "over25")
+        p_over_high = next(p for p in preds_high if p.market == "over25")
 
         assert p_over_high.selection == "Over 2.5"
         assert p_over_high.probability >= p_over_low.probability
@@ -89,13 +89,11 @@ class TestBaselineSanity:
         )
         preds = generate_predictions(f_equal)
         for p in preds:
-            # Under equal inputs, 1X2 probability should be around neutral ~0.35
-            if p.market == "1X2":
+            if p.market == "1x2":
                 assert p.selection == "X"
                 assert p.probability == 0.35
 
     def test_source_agreement_does_not_override_low_sample(self):
-        # Even if external source has strong prediction, low sample size must force grade X
         f_small_sample = self._base_features(sample_size_home=2, sample_size_away=3)
         grade, reasons = evaluate_confidence(f_small_sample)
         assert grade == "X"

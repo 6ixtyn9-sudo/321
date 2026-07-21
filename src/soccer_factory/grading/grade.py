@@ -1,6 +1,7 @@
 from datetime import datetime
-from ..schemas.predictions import Prediction
+from ..schemas.predictions import Prediction, normalize_market, Market
 from ..schemas.results import Result, Grading
+
 
 def grade_prediction(prediction: Prediction, result: Result, grading_source: str) -> Grading:
     if result.status not in ["finished", "completed"]:
@@ -19,17 +20,18 @@ def grade_prediction(prediction: Prediction, result: Result, grading_source: str
         
     correct = False
     actual_outcome = result.match_outcome
+    norm_m = normalize_market(prediction.market)
     
-    if prediction.market == "1X2":
+    if norm_m == Market.RESULT_1X2.value:
         correct = (prediction.selection == actual_outcome)
-    elif prediction.market == "Double chance":
+    elif norm_m == Market.DOUBLE_CHANCE.value:
         correct = (actual_outcome is not None and actual_outcome in prediction.selection)
-    elif prediction.market == "Over/Under 2.5":
+    elif norm_m == Market.OVER_25.value:
         if prediction.selection == "Over 2.5":
             correct = (result.total_goals is not None and result.total_goals > 2)
         else:
             correct = (result.total_goals is not None and result.total_goals <= 2)
-    elif prediction.market == "BTTS":
+    elif norm_m == Market.BTTS.value:
         if prediction.selection == "Yes":
             correct = (result.btts_result is True)
         else:

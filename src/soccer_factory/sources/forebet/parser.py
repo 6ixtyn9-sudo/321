@@ -5,7 +5,7 @@ import uuid
 
 from ..base import BaseParser
 from ...schemas.matches import Match
-from ...schemas.predictions import SourceObservation
+from ...schemas.predictions import SourceObservation, Market
 
 class ForebetParser(BaseParser):
     def __init__(self, version: str = "1.0"):
@@ -95,9 +95,9 @@ class ForebetParser(BaseParser):
             predict_div = row.find('div', class_='predict')
             selection = predict_div.text.strip() if predict_div else None
             
-            market = "1X2"
+            market = Market.RESULT_1X2.value
             if selection in ["1X", "X2", "12"]:
-                market = "Double chance"
+                market = Market.DOUBLE_CHANCE.value
             elif selection not in ["1", "X", "2"]:
                 selection = None 
                 
@@ -150,7 +150,7 @@ class ForebetParser(BaseParser):
                     observations.append(SourceObservation(
                         source="forebet",
                         match_identity=match_identity,
-                        market="Over/Under 2.5",
+                        market=Market.OVER_25.value,
                         selection=uo_text,
                         predicted_score=predicted_score,
                         probability_if_present=None,
@@ -170,7 +170,7 @@ class ForebetParser(BaseParser):
                     observations.append(SourceObservation(
                         source="forebet",
                         match_identity=match_identity,
-                        market="BTTS",
+                        market=Market.BTTS.value,
                         selection=btts_text,
                         predicted_score=predicted_score,
                         probability_if_present=None,
