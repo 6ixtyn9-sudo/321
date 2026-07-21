@@ -119,8 +119,10 @@ class CatalogStore:
             candidates = buckets.get(family, [])
             if not candidates:
                 reps.append(RepresentativePage(
+                    source=source,
                     family=family,
-                    status="unavailable",
+                    example_url="",
+                    observation_status="unavailable",
                     notes="No successful page found for family",
                     parser_exists=family in known_parser_families,
                 ))
@@ -129,17 +131,14 @@ class CatalogStore:
             # Pick best: highest links_found
             best = max(candidates, key=lambda e: e.links_found)
             reps.append(RepresentativePage(
+                source=source,
                 family=family,
                 example_url=best.url,
-                status=str(best.http_status),
-                selection_reason="highest links_found among 200-ok entries",
                 static_html_available=True,
-                playwright_required=_guess_playwright(best),
+                playwright_required=(_guess_playwright(best) == "suspected"),
                 tables_found=best.tables_found,
                 links_found=best.links_found,
-                forms_found=best.forms_found,
-                fields_found=best.fields_detected,
-                field_tokens_count=len(best.field_tokens_detected),
+                fields_found=len(best.data_fields_detected),
                 parser_exists=family in known_parser_families,
                 parser_complete=family in _complete_parser_families(source),
             ))

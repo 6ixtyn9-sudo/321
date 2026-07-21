@@ -115,7 +115,7 @@ def diagnose_page(html: str) -> Dict[str, Any]:
 
     # Honest diagnostics heuristics
     navigation_labels = []
-    text_lower = html.lower()
+    text_lower = html.decode("utf-8", errors="ignore").lower() if isinstance(html, bytes) else html.lower()
     if "goal timing" in text_lower:
         navigation_labels.append("Goal timing")
     if "over/under" in text_lower:
@@ -432,7 +432,8 @@ class BoundedCrawler:
             if html is not None:
                 manifest.pages_fetched += 1
                 entry.fetched_at = datetime.now(timezone.utc)
-                entry.content_hash = hashlib.sha256(html).hexdigest()
+                hash_input = html.encode('utf-8') if isinstance(html, str) else html
+                entry.content_hash = hashlib.sha256(hash_input).hexdigest()
                 entry.snapshot_id = entry.content_hash[:16]
                 entry.content_length = len(html)
 
