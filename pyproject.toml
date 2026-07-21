@@ -1,0 +1,37 @@
+[project]
+name = "soccer_factory"
+version = "0.1.0"
+description = "SoccerStats + Forebet soccer analytics and prediction system"
+requires-python = ">=3.11"
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+    "lxml",
+    "duckdb",
+    "pydantic",
+    "tenacity",
+    "playwright"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "hypothesis",
+    "pre-commit"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true

@@ -1,0 +1,15 @@
+requests
+beautifulsoup4
+lxml
+duckdb
+pydantic
+tenacity
+playwright
+
+[dev]
+pytest
+pytest-cov
+ruff
+mypy
+hypothesis
+pre-commit
