@@ -138,7 +138,9 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
             })
             if match.status == "pre-match" and "/pmatch.asp" in preview_url and preview_url not in scheduled_preview_urls:
                 scheduled_preview_urls.append(preview_url)
-            elif target < today and match.status == "finished" and "/round_details.asp" in preview_url and preview_url not in finished_result_urls:
+            elif target <= today and match.status == "finished" and "/round_details.asp" in preview_url and preview_url not in finished_result_urls:
+                # Today can be a mixed page: archive a confirmed completed result,
+                # but keep it isolated from scheduled pre-match feature records.
                 finished_result_urls.append(preview_url)
 
     preview_snapshots: dict[str, RawSnapshot] = {}
