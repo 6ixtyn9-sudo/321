@@ -1,8 +1,10 @@
-"""Lossless structured extraction of public SoccerStats result-detail pages."""
+"""Lossless and semantic extraction of public SoccerStats result-detail pages."""
 from __future__ import annotations
 
-from bs4 import BeautifulSoup
+import re
 from typing import Any
+
+from bs4 import BeautifulSoup
 
 
 def _text(node: Any) -> str:
@@ -10,11 +12,7 @@ def _text(node: Any) -> str:
 
 
 def extract_result_detail(content: bytes) -> dict[str, Any]:
-    """Return every non-empty HTML table as labelled rows without interpretation.
-
-    This is deliberately broad: it preserves all public statistical material for
-    later semantic parsers, rather than discarding sections we do not yet model.
-    """
+    """Return every non-empty public HTML table as structured rows."""
     soup = BeautifulSoup(content, "lxml")
     title = _text(soup.title) if soup.title else ""
     tables = []
@@ -32,3 +30,41 @@ def extract_result_detail(content: bytes) -> dict[str, Any]:
         if value and value not in headings:
             headings.append(value)
     return {"page_title": title, "headings": headings, "tables": tables}
+
+
+def summarize_result_detail(content: bytes, home_team: str, away_team: str) -> dict[str, Any]:
+    """Extract only explicit match-level facts; retain the lossless archive too."""
+    text = _text(BeautifulSoup(content, "lxml"))
+
+    def pair(pattern: str) -> dict[str, int] | None:
+        found = re.search(pattern, text, re.I)
+        if not found:
+            return None
+        return {"home": int(found.group(1)), "away": int(found.group(2))}
+
+    final_score = pair(
+        re.escape(home_team) + r"\s+(\d+)\s*(?::|\s)\s*(\d+)\s+" + re.escape(away_team)
+    )
+    half_time = pair(r"Half-time score:\s*\(\s*(\d+)\s*[-:]\s*(\d+)\s*\)")
+
+    match_stats: dict[str, Any] = {}
+    for name, pattern in {
+        "ball_possession": r"Ball possession\s+(\d+)%\s+(\d+)%",
+        "corners": r"Corners\s+(\d+)\s+(\d+)",
+        "time_leading": r"% of time leading\s+(\d+)%\s+(\d+)%",
+        "domination_index": r"Domination Index\s+(\d+)%\s+(\d+)%",
+    }.items():
+        found = pair(pattern)
+        if found is not None:
+            match_stats[name] = found
+    surprise = re.search(r"(?:Outcome )?Surprise-Level:\s*(\d+(?:\.\d+)?)%", text, re.I)
+    if surprise:
+        match_stats["outcome_surprise_level"] = float(surprise.group(1))
+
+    return {
+        "final_score": final_score,
+        "half_time_score": half_time,
+        "total_goals": (final_score["home"] + final_score["away"]) if final_score else None,
+        "btts": bool(final_score and final_score["home"] > 0 and final_score["away"] > 0),
+        "match_stats": match_stats,
+    }

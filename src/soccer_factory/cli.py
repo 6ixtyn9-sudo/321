@@ -9,7 +9,7 @@ from src.soccer_factory.sources.soccerstats.parser import SoccerStatsParser
 from src.soccer_factory.sources.forebet.parser import ForebetParser
 from src.soccer_factory.sources.http_collector import HttpCollector
 from src.soccer_factory.sources.soccerstats.live import collect_daily_bundle
-from src.soccer_factory.sources.soccerstats.results import extract_result_detail
+from src.soccer_factory.sources.soccerstats.results import extract_result_detail, summarize_result_detail
 from src.soccer_factory.identity.matcher import match_teams
 from src.soccer_factory.models.baseline import generate_predictions, generate_no_predictions
 from src.soccer_factory.schemas.features import Features
@@ -139,6 +139,7 @@ def do_extract_results(args: argparse.Namespace) -> None:
             "match_id": link.get("match_id"), "competition": link.get("competition"),
             "home_team": link.get("home_team"), "away_team": link.get("away_team"),
             "source_url": link.get("detail_url"), "snapshot_path": str(page_path),
+            "summary": summarize_result_detail(page_path.read_bytes(), link.get("home_team", ""), link.get("away_team", "")),
             "extracted": extract_result_detail(page_path.read_bytes()),
         })
     output = Path(DATA_REPORTS) / f"soccerstats_result_details_{run_id}.json"
