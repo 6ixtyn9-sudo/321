@@ -259,7 +259,70 @@ class SoccerStatsParser(BaseParser):
                 over_25_rate_away=away_rates.get("over_25", 0.0) / 100.0 if away_rates else None,
                 over_35_rate_home=home_rates.get("over_35", 0.0) / 100.0 if home_rates else None,
                 over_35_rate_away=away_rates.get("over_35", 0.0) / 100.0 if away_rates else None)]
+        alternate = self._parse_scoring_layout(soup, match_id, collected_at, kickoff)
+        if alternate:
+            return alternate
         return self._parse_legacy_features(soup, match_id, collected_at)
+
+    def _parse_scoring_layout(self, soup: BeautifulSoup, match_id: str, collected_at: datetime,
+                              kickoff: datetime) -> List[Features]:
+        """Parse the alternate pmatch layout with one SCORING table per team.
+
+        The first table is the home team's home/away history; the second is the
+        visiting team's history. For a fixture we intentionally use first/Home
+        and second/Away only.
+        """
+        scoring_tables = []
+        for table in soup.find_all("table"):
+            header = " ".join(table.find("tr").stripped_strings) if table.find("tr") else ""
+            if header.strip().upper() == "SCORING HOME AWAY ALL":
+                rows: Dict[str, tuple[Optional[float], Optional[float]]] = {}
+                for row in table.find_all("tr"):
+                    cells = [self._text(cell) for cell in row.find_all("td", recursive=False)]
+                    if len(cells) >= 3:
+                        label = " ".join(cells[0].split()).lower()
+                        rows[label] = (self._number(cells[1]), self._number(cells[2]))
+                scoring_tables.append(rows)
+        if len(scoring_tables) < 2:
+            return []
+
+        def value(table: Dict[str, tuple[Optional[float], Optional[float]]], label: str, side: int) -> Optional[float]:
+            pair = table.get(label.lower())
+            return pair[side] if pair else None
+
+        home_table, away_table = scoring_tables[0], scoring_tables[1]
+        # PPG sections occur once for each team, in the same order as scoring tables.
+        ppg_pairs: list[Optional[float]] = []
+        for row in soup.find_all("tr"):
+            cells = [self._text(cell) for cell in row.find_all("td", recursive=False)]
+            if len(cells) == 2 and "points per game at home" in cells[0].lower():
+                ppg_pairs.append(self._number(cells[1]))
+            elif len(cells) == 2 and "points per game away" in cells[0].lower():
+                ppg_pairs.append(self._number(cells[1]))
+        # Entries are PPGH, PPGA for team one, then PPGH, PPGA for team two.
+        home_ppg = ppg_pairs[0] if len(ppg_pairs) >= 1 else None
+        away_ppg = ppg_pairs[3] if len(ppg_pairs) >= 4 else None
+
+        home_gf = value(home_table, "gf per match", 0)
+        away_gf = value(away_table, "gf per match", 1)
+        home_ga = value(home_table, "ga per match", 0)
+        away_ga = value(away_table, "ga per match", 1)
+        if None in (home_gf, away_gf, home_ga, away_ga):
+            return []
+        pct = lambda table, label, side: (value(table, label, side) / 100.0) if value(table, label, side) is not None else None
+        return [Features(match_id=match_id, collected_at=collected_at, feature_cutoff=collected_at,
+            match_kickoff=kickoff, data_type="pre-match", source_status="pre-match",
+            home_goals_scored_avg=home_gf, away_goals_scored_avg=away_gf,
+            home_goals_conceded_avg=home_ga, away_goals_conceded_avg=away_ga,
+            home_total_goals_avg=value(home_table, "gf + ga per match", 0),
+            away_total_goals_avg=value(away_table, "gf + ga per match", 1),
+            over_15_rate_home=pct(home_table, "gf+ga over 1.5", 0),
+            over_15_rate_away=pct(away_table, "gf+ga over 1.5", 1),
+            over_25_rate_home=pct(home_table, "gf+ga over 2.5", 0),
+            over_25_rate_away=pct(away_table, "gf+ga over 2.5", 1),
+            over_35_rate_home=pct(home_table, "gf+ga over 3.5", 0),
+            over_35_rate_away=pct(away_table, "gf+ga over 3.5", 1),
+            home_ppg=home_ppg, away_ppg=away_ppg)]
 
     def _parse_legacy_features(self, soup: BeautifulSoup, match_id: str, collected_at: datetime) -> List[Features]:
         tables = soup.find_all("table", class_="sortable")
