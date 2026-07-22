@@ -1,0 +1,22 @@
+{
+  "collection_run_id": "3bacb94e-3db2-49d5-8521-f9438ff9b7d0",
+  "target_date": "2026-07-21",
+  "index_pages": 1,
+  "scheduled_preview_urls_found": 0,
+  "scheduled_preview_urls_collected": 0,
+  "finished_result_urls_found": 10,
+  "finished_result_urls_collected": 10,
+  "max_previews": 0,
+  "fixtures_discovered": 16,
+  "fixture_links_file": "fixture_links.jsonl",
+  "browser_fallback_enabled": true,
+  "coverage_checks": [
+    {
+      "url": "https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1",
+      "http_fixture_count": 16,
+      "browser_fixture_count": null,
+      "browser_error": "Page.goto: Timeout 30000ms exceeded.\nCall log:\n  - navigating to \"https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1\", waiting until \"networkidle\"\n",
+      "selected_method": "requests_public_html"
+    }
+  ]
+}
