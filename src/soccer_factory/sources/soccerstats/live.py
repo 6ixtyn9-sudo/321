@@ -96,6 +96,7 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
     snapshots: list[RawSnapshot] = []
     scheduled_preview_urls: list[str] = []
     finished_result_urls: list[str] = []
+    alternate_detail_urls: list[str] = []
     fixture_links: list[dict[str, object]] = []
 
     for ordinal, url in enumerate(index_urls, start=1):
@@ -142,6 +143,10 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
                 # Today can be a mixed page: archive a confirmed completed result,
                 # but keep it isolated from scheduled pre-match feature records.
                 finished_result_urls.append(preview_url)
+            elif any(token in preview_url for token in ("/leagueview_team.asp", "/h2h.asp")) and preview_url not in alternate_detail_urls:
+                # Alternate public detail families are archived for every state;
+                # downstream state rules decide whether their contents are usable.
+                alternate_detail_urls.append(preview_url)
 
     preview_snapshots: dict[str, RawSnapshot] = {}
     for ordinal, url in enumerate(scheduled_preview_urls[:max_previews], start=1):
@@ -164,6 +169,16 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         snapshots.append(snapshot)
         result_snapshots[url] = snapshot
 
+    remaining_detail_budget = 50 - reserved_index_requests - len(preview_snapshots) - len(result_snapshots)
+    detail_snapshots: dict[str, RawSnapshot] = {}
+    for ordinal, url in enumerate(alternate_detail_urls[:remaining_detail_budget], start=1):
+        status, content, headers, error = collector.fetch(url)
+        snapshot = _snapshot(source="soccerstats", url=url, status=status, content=content,
+            headers=headers, error=error, parser_version=parser_version, target=target, run_id=run_id,
+            run_dir=run_dir, file_stem=f"match_detail_{ordinal:03d}")
+        snapshots.append(snapshot)
+        detail_snapshots[url] = snapshot
+
     # This is the durable bridge between a fixture discovered on the index and
     # its particular preview or result snapshot. It prevents linkage by file
     # order or fuzzy team-name matching.
@@ -176,6 +191,10 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         link["result_snapshot_id"] = result_snapshot.snapshot_id if result_snapshot else None
         link["result_snapshot_path"] = result_snapshot.local_file_path if result_snapshot else None
         link["result_collected"] = result_snapshot is not None and result_snapshot.validation_status == "fetched"
+        detail_snapshot = detail_snapshots.get(str(link["detail_url"]))
+        link["detail_snapshot_id"] = detail_snapshot.snapshot_id if detail_snapshot else None
+        link["detail_snapshot_path"] = detail_snapshot.local_file_path if detail_snapshot else None
+        link["detail_collected"] = detail_snapshot is not None and detail_snapshot.validation_status == "fetched"
     (run_dir / "fixture_links.jsonl").write_text(
         "".join(json.dumps(link, sort_keys=True) + "\n" for link in fixture_links), encoding="utf-8"
     )
@@ -190,6 +209,8 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         "scheduled_preview_urls_collected": len(preview_snapshots),
         "finished_result_urls_found": len(finished_result_urls),
         "finished_result_urls_collected": len(result_snapshots),
+        "alternate_detail_urls_found": len(alternate_detail_urls),
+        "alternate_detail_urls_collected": len(detail_snapshots),
         "max_previews": max_previews,
         "fixtures_discovered": len(fixture_links),
         "fixture_links_file": "fixture_links.jsonl",
