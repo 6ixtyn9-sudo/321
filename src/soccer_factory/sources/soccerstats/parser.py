@@ -107,6 +107,10 @@ class SoccerStatsParser(BaseParser):
         """Parse current index markup: a `parent` league row plus team1row/team2row pairs."""
         matches: List[Match] = []
         competition = "Unknown"
+        # A numeric score on the current-day page can be live. On an explicitly
+        # labelled yesterday/results index, the same two-score layout is final.
+        page_title = self._text(soup.title).lower()
+        is_yesterday_results = "yesterday" in page_title and "result" in page_title
         # Only direct rows are processed: nested tables otherwise cause duplicate rows.
         for row in soup.select("tr"):
             classes = set(row.get("class") or [])
@@ -128,7 +132,11 @@ class SoccerStatsParser(BaseParser):
             anchor = row.find("a", href=True)
             href = self._absolute(str(anchor["href"])) if anchor else ""
             path = urlparse(href).path.lower()
+            away_marker = self._text(away_cells[1]) if len(away_cells) > 1 else ""
+            has_score_pair = bool(re.fullmatch(r"\d+", marker) and re.fullmatch(r"\d+", away_marker))
             if "round_details.asp" in path:
+                status = "finished"
+            elif is_yesterday_results and has_score_pair:
                 status = "finished"
             elif marker.lower() in {"pp.", "p-p"}:
                 status = "postponed"
