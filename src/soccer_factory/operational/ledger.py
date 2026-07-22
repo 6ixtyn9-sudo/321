@@ -29,8 +29,9 @@ def create_snapshot(
     content_length = len(content) if content else 0
     
     # Check if identical hash exists in db (skipped here, assumed handled upstream/downstream)
-    
-    snapshot_id = f"{source}_{content_hash[:12]}_{requested_at.strftime('%Y%m%d%H%M%S')}" if content_hash else f"{source}_err_{uuid.uuid4().hex[:8]}"
+    canonical_url = url.split("?")[0] # basic normalization
+    canonical_identity = f"snapshot:{source}:{canonical_url}:{content_hash or 'err'}:{parser_version}"
+    snapshot_id = str(uuid.uuid5(uuid.NAMESPACE_URL, canonical_identity))
     
     validation_status = "error" if response_status >= 400 or not content else "unparsed"
     

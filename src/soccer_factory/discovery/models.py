@@ -1,8 +1,50 @@
-import urllib.parse
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
+from enum import Enum
+
+class ObservationStatus(str, Enum):
+    LIVE_OBSERVED = "live_observed"
+    FIXTURE_OBSERVED = "fixture_observed"
+    NOT_OBSERVED = "not_observed"
+    FAILED = "failed"
+
+class ClassifierStatus(str, Enum):
+    IMPLEMENTED = "implemented"
+    UNKNOWN = "unknown"
+    RESTRICTED = "restricted"
+    EXTERNAL = "external"
+
+class ParserStatus(str, Enum):
+    IMPLEMENTED = "implemented"
+    UNIMPLEMENTED = "unimplemented"
+    NOT_APPLICABLE = "not_applicable"
+
+class FailureCode(str, Enum):
+    HTTP_403 = "http_403"
+    HTTP_404 = "http_404"
+    HTTP_429 = "http_429"
+    HTTP_5XX = "http_5xx"
+    RETRY_EXHAUSTED = "retry_exhausted"
+    TIMEOUT = "timeout"
+    CONNECTION_ERROR = "connection_error"
+    ROBOTS_BLOCKED = "robots_blocked"
+    ROBOTS_UNAVAILABLE = "robots_unavailable"
+    CIRCUIT_BREAKER_OPEN = "circuit_breaker_open"
+    DECODE_ERROR = "decode_error"
+    PARSER_ERROR = "parser_error"
+    NO_FIXTURE_MAPPING = "no_fixture_mapping"
+    MAX_TOTAL_REQUESTS = "max_total_requests"
+    MAX_PAGES_PER_SOURCE = "max_pages_per_source"
+    MAX_PAGES_PER_FAMILY = "max_pages_per_family"
+    UNKNOWN = "unknown"
+
+class FamilyOutcome(BaseModel):
+    discovered: int = 0
+    attempted: int = 0
+    fetched: int = 0
+    parsed: int = 0
+    failed: int = 0
 
 class DiscoveryConfig(BaseModel):
     max_depth: int = 3
@@ -39,6 +81,8 @@ class CatalogEntry(BaseModel):
     fetch_status: str = "pending"         # pending | ok | failed | restricted | external
     parse_status: str = "pending"         # pending | ok | failed
     error: Optional[str] = None
+    failure_details: Optional[str] = None
+    failure_code: Optional[FailureCode] = None
     
     # Honest Diagnostics
     tables_found: int = 0
@@ -50,15 +94,14 @@ class CatalogEntry(BaseModel):
     tables_detected: List[str] = Field(default_factory=list)
     market_fields_detected: List[str] = Field(default_factory=list)
     detection_method: str = "heuristic"
-    parser_status: str = "not_checked"    # observed | not_observed | not_checked
 
 class RepresentativePage(BaseModel):
     source: str
     family: str
     example_url: str
-    observation_status: str = "not_observed" # live_observed | fixture_observed | not_observed | failed
-    classifier_status: str = "unknown" # implemented | unknown | restricted | external
-    parser_status: str = "unimplemented" # implemented | unimplemented | not_applicable
+    observation_status: ObservationStatus = ObservationStatus.NOT_OBSERVED
+    classifier_status: ClassifierStatus = ClassifierStatus.UNKNOWN
+    parser_status: ParserStatus = ParserStatus.UNIMPLEMENTED
     static_html_available: bool = True
     playwright_required: bool = False
     tables_found: int = 0
@@ -66,7 +109,7 @@ class RepresentativePage(BaseModel):
     fields_found: int = 0
     parser_exists: bool = False
     parser_complete: bool = False
-    fixture_fidelity: str = "high" # live_observed | simplified_from_live | synthetic
+    fixture_fidelity: str = "high"
     notes: str = ""
 
 class RunManifest(BaseModel):
@@ -87,10 +130,14 @@ class RunManifest(BaseModel):
     pages_external: int = 0
     pages_unknown: int = 0
     failure_reasons: Dict[str, int] = Field(default_factory=dict)
-    families_observed_successfully: List[str] = Field(default_factory=list)
-    families_failed: List[str] = Field(default_factory=list)
-    families_found: List[str] = Field(default_factory=list)
-    families_missing: List[str] = Field(default_factory=list)
+    family_outcomes: Dict[str, FamilyOutcome] = Field(default_factory=dict)
+    
+    # Derived lists for backward compatibility/reporting
+    families_with_success: List[str] = Field(default_factory=list)
+    families_with_failures: List[str] = Field(default_factory=list)
+    families_fully_failed: List[str] = Field(default_factory=list)
+    families_not_observed: List[str] = Field(default_factory=list)
+
     network_requests: int = 0
     stop_reason: Optional[str] = None
 

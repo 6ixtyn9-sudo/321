@@ -1,8 +1,6 @@
 import pytest
 from src.soccer_factory.discovery.crawler import BoundedCrawler
 from src.soccer_factory.discovery.models import DiscoveryConfig
-from src.soccer_factory.discovery.seeds import get_seeds
-from src.soccer_factory.discovery.classifier import all_families
 
 @pytest.fixture
 def ss_config():

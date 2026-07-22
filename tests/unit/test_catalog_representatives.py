@@ -1,4 +1,3 @@
-import pytest
 from src.soccer_factory.discovery.catalog import CatalogStore
 from src.soccer_factory.discovery.models import CatalogEntry
 

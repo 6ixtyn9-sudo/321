@@ -1,10 +1,8 @@
 import pytest
-import urllib.robotparser
-from src.soccer_factory.discovery.policy import is_allowed, is_valid_scheme, is_same_domain, is_restricted
-from src.soccer_factory.discovery.crawler import BoundedCrawler, CircuitBreaker, CircuitOpenError, RateLimiter
+from src.soccer_factory.discovery.policy import is_valid_scheme, is_restricted
+from src.soccer_factory.discovery.crawler import CircuitBreaker, CircuitOpenError, RateLimiter
 from src.soccer_factory.discovery.catalog import CatalogStore
-from src.soccer_factory.discovery.models import DiscoveryConfig, CatalogEntry
-from src.soccer_factory.sources.http_collector import RateLimitError
+from src.soccer_factory.discovery.models import CatalogEntry
 
 def test_circuit_breaker():
     cb = CircuitBreaker(threshold=3)

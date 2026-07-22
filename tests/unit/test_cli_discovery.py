@@ -1,7 +1,5 @@
 import pytest
-import os
-import argparse
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from src.soccer_factory.cli import check_mode, do_discover, parse_args
 from src.soccer_factory.discovery.models import RunManifest
 

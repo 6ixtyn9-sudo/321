@@ -5,6 +5,9 @@ from ..schemas.features import Features
 from ..schemas.predictions import Prediction, NoPrediction, Market, CANONICAL_MARKETS
 from .confidence import evaluate_confidence
 
+def get_prediction_id(match_id: str, market: str, model_version: str, feature_cutoff: datetime, revision: str = "revision-1") -> str:
+    canonical = f"prediction:{match_id}:{market}:{model_version}:{feature_cutoff.isoformat()}:{revision}"
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, canonical))
 
 def generate_predictions(features: Features, model_version: str = "baseline_1.0") -> List[Prediction]:
     predictions = []
@@ -25,7 +28,7 @@ def generate_predictions(features: Features, model_version: str = "baseline_1.0"
             sel_1x2, prob_1x2 = "X", 0.35
             
         predictions.append(Prediction(
-            prediction_id=uuid.uuid4().hex,
+            prediction_id=get_prediction_id(features.match_id, Market.RESULT_1X2.value, model_version, features.feature_cutoff),
             match_id=features.match_id,
             market=Market.RESULT_1X2.value,
             selection=sel_1x2,
@@ -47,7 +50,7 @@ def generate_predictions(features: Features, model_version: str = "baseline_1.0"
             sel_dc, prob_dc = "1X", 0.65
 
         predictions.append(Prediction(
-            prediction_id=uuid.uuid4().hex,
+            prediction_id=get_prediction_id(features.match_id, Market.DOUBLE_CHANCE.value, model_version, features.feature_cutoff),
             match_id=features.match_id,
             market=Market.DOUBLE_CHANCE.value,
             selection=sel_dc,
@@ -67,7 +70,7 @@ def generate_predictions(features: Features, model_version: str = "baseline_1.0"
         prob = avg_rate if avg_rate >= 0.5 else (1 - avg_rate)
         
         predictions.append(Prediction(
-            prediction_id=uuid.uuid4().hex,
+            prediction_id=get_prediction_id(features.match_id, Market.OVER_25.value, model_version, features.feature_cutoff),
             match_id=features.match_id,
             market=Market.OVER_25.value,
             selection=sel,
@@ -87,7 +90,7 @@ def generate_predictions(features: Features, model_version: str = "baseline_1.0"
         prob = avg_btts if avg_btts >= 0.5 else (1 - avg_btts)
         
         predictions.append(Prediction(
-            prediction_id=uuid.uuid4().hex,
+            prediction_id=get_prediction_id(features.match_id, Market.BTTS.value, model_version, features.feature_cutoff),
             match_id=features.match_id,
             market=Market.BTTS.value,
             selection=sel,

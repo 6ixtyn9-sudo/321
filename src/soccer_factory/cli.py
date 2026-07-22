@@ -26,6 +26,7 @@ def parse_args() -> argparse.Namespace:
     
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--date", type=str, help="Date in YYYY-MM-DD format", required=False)
+    parent_parser.add_argument("--as-of", type=str, help="Deterministic as-of timestamp (e.g. 2026-07-21T00:00:00Z)", required=False)
     parent_parser.add_argument("--mode", type=str, choices=["fixture", "live"], default="fixture", help="Run mode")
     parent_parser.add_argument("--confirm-live", action="store_true", help="Confirm live mode execution")
 
@@ -55,6 +56,11 @@ def check_mode(args: argparse.Namespace) -> None:
         print("Error: --mode live requires --confirm-live flag to prevent accidental live runs.", file=sys.stderr)
         sys.exit(1)
 
+def get_as_of(args: argparse.Namespace) -> datetime:
+    if getattr(args, "as_of", None):
+        return datetime.fromisoformat(args.as_of.replace("Z", "+00:00"))
+    return datetime.now(timezone.utc)
+
 def do_collect(args: argparse.Namespace) -> None:
     setup_dirs()
     if getattr(args, 'mode', 'fixture') == "fixture":
@@ -78,7 +84,7 @@ def do_validate(args: argparse.Namespace) -> None:
     setup_dirs()
     ss_parser = SoccerStatsParser()
     fb_parser = ForebetParser()
-    dt = datetime.now(timezone.utc)
+    dt = get_as_of(args)
     
     matches = []
     obs = []
@@ -345,7 +351,7 @@ def do_smoke_test(args: argparse.Namespace) -> None:
     with open(snap_path, "wb") as f:
         f.write(content)
         
-    dt = datetime.now(timezone.utc)
+    dt = get_as_of(args)
     if source == "soccerstats":
         ss_parser = SoccerStatsParser()
         matches = ss_parser.parse_matches(content, dt)
@@ -392,14 +398,14 @@ def do_discover(args: argparse.Namespace) -> None:
     crawler = BoundedCrawler(config=cfg, collector=collector)
     
     if args.mode == "live":
-        print(f"--- LIVE AUDIT LIMITS ---")
+        print("--- LIVE AUDIT LIMITS ---")
         print(f"max_total_requests: {cfg.max_total_requests}")
         print(f"max_pages_per_source: {cfg.max_pages_per_source}")
         print(f"max_pages_per_family: {cfg.max_pages_per_family}")
         print(f"max_depth: {cfg.max_depth}")
         print(f"request_delay_seconds: {cfg.request_delay_seconds}")
         print(f"circuit_breaker_threshold: {cfg.circuit_breaker_threshold}")
-        print(f"-------------------------")
+        print("-------------------------")
 
     print(f"Starting discovery for {args.source} in {args.mode} mode...")
     entries, manifest = crawler.crawl(args.source, seeds, mode=args.mode)

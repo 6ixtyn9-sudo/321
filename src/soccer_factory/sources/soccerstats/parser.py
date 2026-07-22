@@ -61,16 +61,27 @@ class SoccerStatsParser(BaseParser):
                     except ValueError:
                         pass
 
+                country = current_competition.split(" - ")[0] if " - " in current_competition else "Unknown"
+                comp_key = current_competition.lower().replace(" ", "_")
+                norm_home = home_team.lower()
+                norm_away = away_team.lower()
+                
+                date_str = kickoff.strftime("%Y-%m-%d")
+                time_str_kickoff = kickoff.strftime("%H:%M") if ":" in time_str else ""
+                
+                canonical_identity = f"match:soccer|{country}|{comp_key}||{date_str}|{time_str_kickoff}|{norm_home}|{norm_away}"
+                deterministic_id = str(uuid.uuid5(uuid.NAMESPACE_URL, canonical_identity))
+
                 match = Match(
-                    match_id=str(uuid.uuid4()),
+                    match_id=deterministic_id,
                     sport="soccer",
-                    country=current_competition.split(" - ")[0] if " - " in current_competition else "Unknown",
+                    country=country,
                     competition=current_competition,
-                    competition_key=current_competition.lower().replace(" ", "_"),
+                    competition_key=comp_key,
                     home_team=home_team,
                     away_team=away_team,
-                    normalized_home_team=home_team.lower(),
-                    normalized_away_team=away_team.lower(),
+                    normalized_home_team=norm_home,
+                    normalized_away_team=norm_away,
                     scheduled_kickoff=kickoff,
                     timezone="UTC",
                     source_urls={"soccerstats": pmatch_link},

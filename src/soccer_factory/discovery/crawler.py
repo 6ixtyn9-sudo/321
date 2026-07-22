@@ -18,6 +18,8 @@ live:
     Obeys all rate limits, circuit breaker, and robots policy.
 """
 from __future__ import annotations
+import re
+from .models import FailureCode
 
 import hashlib
 import time
@@ -25,7 +27,7 @@ import uuid
 from collections import deque
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple, Any
-from urllib.parse import urljoin, urlparse, urlunparse, urlencode, parse_qsl
+from urllib.parse import urlparse
 import urllib.parse
 
 from bs4 import BeautifulSoup
@@ -394,6 +396,7 @@ class BoundedCrawler:
                         entry.fetch_status = "failed"
                         entry.http_status = status
                         entry.error = error
+                        entry.failure_code = FailureCode.UNKNOWN
                         manifest.pages_failed += 1
                         entries.append(entry)
                         continue
@@ -403,6 +406,7 @@ class BoundedCrawler:
                         entry.fetch_status = "failed"
                         entry.http_status = status
                         entry.error = f"http_{status}"
+                        entry.failure_code = FailureCode(f"http_{status}") if status in (403, 404, 429) else FailureCode.HTTP_5XX
                         manifest.pages_failed += 1
                         entries.append(entry)
                         if circuit.is_open:
@@ -424,6 +428,8 @@ class BoundedCrawler:
                 except Exception as exc:
                     entry.fetch_status = "failed"
                     entry.error = str(exc)
+                    entry.failure_details = re.sub(r' at 0x[0-9a-fA-F]+', '', str(exc))
+                    entry.failure_code = FailureCode.UNKNOWN
                     manifest.pages_failed += 1
                     entries.append(entry)
                     continue
@@ -463,6 +469,8 @@ class BoundedCrawler:
                 except Exception as exc:
                     entry.parse_status = "error"
                     entry.error = str(exc)
+                    entry.failure_details = re.sub(r' at 0x[0-9a-fA-F]+', '', str(exc))
+                    entry.failure_code = FailureCode.UNKNOWN
 
                 # Extract child links if within depth limit
                 if depth < self.config.max_depth:
@@ -495,14 +503,34 @@ class BoundedCrawler:
                 failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
         manifest.failure_reasons = failure_reasons
         
-        manifest.families_observed_successfully = sorted({e.page_family for e in entries if e.fetch_status == "ok" and e.page_family not in ("unknown", "restricted", "external")})
-        manifest.families_failed = sorted({e.page_family for e in entries if e.fetch_status == "failed" and e.page_family not in ("unknown", "restricted", "external")})
-        manifest.families_found = sorted(
-            {e.page_family for e in entries if e.page_family not in ("unknown", "restricted", "external")}
-        )
-        from .classifier import all_families
-        all_fam = set(all_families(source)) - {"unknown", "restricted", "external"}
-        manifest.families_missing = sorted(all_fam - set(manifest.families_found))
+        from .models import FamilyOutcome
+        
+        all_fams = {e.page_family for e in entries if e.page_family not in ("unknown", "restricted", "external")}
+        for fam in all_fams:
+            manifest.family_outcomes[fam] = FamilyOutcome()
+            
+        for e in entries:
+            fam = e.page_family
+            if fam in ("unknown", "restricted", "external"):
+                continue
+            if fam not in manifest.family_outcomes:
+                manifest.family_outcomes[fam] = FamilyOutcome()
+            
+            manifest.family_outcomes[fam].discovered += 1
+            if e.fetch_status in ("ok", "failed"):
+                manifest.family_outcomes[fam].attempted += 1
+            if e.fetch_status == "ok":
+                manifest.family_outcomes[fam].fetched += 1
+            if e.parse_status == "ok":
+                manifest.family_outcomes[fam].parsed += 1
+            if e.fetch_status == "failed":
+                manifest.family_outcomes[fam].failed += 1
+
+        manifest.families_with_success = sorted({k for k, v in manifest.family_outcomes.items() if v.fetched > 0})
+        manifest.families_with_failures = sorted({k for k, v in manifest.family_outcomes.items() if v.failed > 0})
+        manifest.families_fully_failed = sorted({k for k, v in manifest.family_outcomes.items() if v.attempted > 0 and v.fetched == 0})
+        manifest.families_not_observed = sorted({k for k, v in manifest.family_outcomes.items() if v.attempted == 0})
+
         manifest.completed_at = datetime.now(timezone.utc)
 
         return entries, manifest

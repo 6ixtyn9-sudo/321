@@ -45,16 +45,27 @@ class ForebetParser(BaseParser):
                 except ValueError:
                     pass
             
+            country = "Unknown"
+            comp_key = "unknown"
+            norm_home = home_team.lower()
+            norm_away = away_team.lower()
+            
+            date_str_formatted = kickoff.strftime("%Y-%m-%d") if date_str else ""
+            time_str_kickoff = kickoff.strftime("%H:%M") if date_str and ":" in date_str else ""
+            
+            canonical_identity = f"match:soccer|{country}|{comp_key}||{date_str_formatted}|{time_str_kickoff}|{norm_home}|{norm_away}"
+            deterministic_id = str(uuid.uuid5(uuid.NAMESPACE_URL, canonical_identity))
+
             match = Match(
-                match_id=str(uuid.uuid4()),
+                match_id=deterministic_id,
                 sport="soccer",
-                country="Unknown",
+                country=country,
                 competition="Unknown",
-                competition_key="unknown",
+                competition_key=comp_key,
                 home_team=home_team,
                 away_team=away_team,
-                normalized_home_team=home_team.lower(),
-                normalized_away_team=away_team.lower(),
+                normalized_home_team=norm_home,
+                normalized_away_team=norm_away,
                 scheduled_kickoff=kickoff,
                 timezone="UTC",
                 source_urls={},
