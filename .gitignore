@@ -1,36 +1,72 @@
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
+.venv/
+.env
 
-# Data
-data/raw/*
-!data/raw/.gitkeep
-data/normalized/*
-!data/normalized/.gitkeep
-data/quarantine/*
-!data/quarantine/.gitkeep
-data/warehouse/*
-!data/warehouse/.gitkeep
-data/reports/*
-!data/reports/.gitkeep
+# Editor/OS/backup files (never track stale backup/swap files)
+*.bak
+*.orig
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
 
-# Playwright
-.playwright/
+# Environment files
+.env.*
+!.env.example
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
+# Ignore heavy data (warehouse parquet/duckdb, logs)
+localdata/warehouse/
+*.parquet
+*.duckdb
+*.duckdb.wal
+*.log
+
+# ---- Operational state (broker / runtime) ----
+# Excluded by default — most operational files should not be committed.
+localdata/stop_state.json
+localdata/cooldown_journal.json
+localdata/stopout_journal.json
+localdata/HALT_TRADING.flag
+localdata/trade_journal.csv
+localdata/paper_trade_log.csv
+localdata/HALT_TRADING_CRYPTO.flag
+localdata/HALT_TRADING_FUTURES.flag
+
+# Allow intelligence/artifacts (research CSVs/JSONs and curated config)
+!localdata/*.csv
+!localdata/*.json
+!.gitkeep
+
+# ── 2026-07-21: Operational journals committed for durability ──
+# Previously these were cache-only and trades entered/exited within a single
+# scan cycle were lost.  Reversing the exclusion lets the workflow commit
+# step store them in git alongside the research outputs.
+!localdata/trade_journal.csv
+!localdata/trade_journal_crypto.csv
+!localdata/trade_journal_futures.csv
+!localdata/paper_trade_log.csv
+!localdata/paper_trade_log_crypto.csv
+!localdata/paper_trade_log_futures.csv
+!localdata/stop_state.json
+!localdata/stop_state_crypto.json
+!localdata/stop_state_futures.json
+!localdata/stopout_journal.json
+!localdata/stopout_journal_crypto.json
+!localdata/stopout_journal_futures.json
+!localdata/cooldown_journal.json
+!localdata/cooldown_journal_crypto.json
+!localdata/cooldown_journal_futures.json
+
+# HALTs stay untracked (operator-only kill switches, never auto-committed).
+
+# Local self-hosted GitHub Actions runner; never commit
+/actions-runner/
+actions-runner/
+
+# Research shard scratch outputs; merged artifacts are tracked, shards are not.
+localdata/research/*/shards/
+localdata/research/shards/
