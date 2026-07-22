@@ -15,6 +15,12 @@ class Features(BaseModel):
     # Example generic features
     home_ppg: Optional[float] = Field(default=None, ge=0.0, le=3.0)
     away_ppg: Optional[float] = Field(default=None, ge=0.0, le=3.0)
+    home_win_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    away_win_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    home_failed_to_score_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    away_failed_to_score_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    home_clean_sheet_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    away_clean_sheet_rate: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     home_goals_scored_avg: Optional[float] = Field(default=None, ge=0.0)
     home_goals_conceded_avg: Optional[float] = Field(default=None, ge=0.0)
     away_goals_scored_avg: Optional[float] = Field(default=None, ge=0.0)

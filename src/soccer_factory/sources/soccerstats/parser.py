@@ -349,5 +349,65 @@ class SoccerStatsParser(BaseParser):
             home_ppg=home.get("PPG"), away_ppg=away.get("PPG"),
             sample_size_home=int(home.get("GP", 0.0)), sample_size_away=int(away.get("GP", 0.0))) ]
 
+    def parse_index_features(self, content: bytes, collected_at: datetime) -> List[Features]:
+        """Extract the normal daily-index Home/Away metric rows.
+
+        The index is the baseline source: preview pages are enrichment only.
+        A row with no numeric history (for example a new season) intentionally
+        yields no feature record.
+        """
+        soup = BeautifulSoup(content, "lxml")
+        if soup.find("table", id="btable"):
+            return []  # legacy fixtures do not model the current index layout
+        matches = self._parse_live_index(soup, collected_at)
+        by_pair = {(m.home_team, m.away_team): m for m in matches if m.status == "pre-match"}
+        features: List[Features] = []
+        for row in soup.select("tr.team1row"):
+            away_row = row.find_next_sibling("tr", class_="team2row")
+            home_cells = row.find_all("td", recursive=False)
+            away_cells = away_row.find_all("td", recursive=False) if away_row else []
+            if not home_cells or not away_cells:
+                continue
+            home, away = self._text(home_cells[0]), self._text(away_cells[0])
+            match = by_pair.get((home, away))
+            if not match:
+                continue
+
+            def metrics(cells: list[Tag]) -> Optional[Dict[str, float]]:
+                values = [self._text(cell) for cell in cells]
+                try:
+                    scope_at = next(i for i, value in enumerate(values) if value.lower() in {"home", "away", "total", "last 8"})
+                except StopIteration:
+                    return None
+                # A decorative graph cell appears before PPG on live pages.
+                raw = [value for value in values[scope_at + 1:] if value][:12]
+                if len(raw) != 12:
+                    return None
+                numbers = [self._number(value) for value in raw]
+                if any(value is None for value in numbers):
+                    return None
+                return dict(zip(("gp", "win", "fts", "cs", "btts", "tg", "gf", "ga", "over15", "over25", "over35", "ppg"), numbers))
+
+            home_metrics, away_metrics = metrics(home_cells), metrics(away_cells)
+            if not home_metrics or not away_metrics:
+                continue
+            features.append(Features(
+                match_id=match.match_id, collected_at=collected_at, feature_cutoff=collected_at,
+                match_kickoff=match.scheduled_kickoff, data_type="pre-match", source_status="pre-match",
+                home_ppg=home_metrics["ppg"], away_ppg=away_metrics["ppg"],
+                home_win_rate=home_metrics["win"] / 100.0, away_win_rate=away_metrics["win"] / 100.0,
+                home_failed_to_score_rate=home_metrics["fts"] / 100.0, away_failed_to_score_rate=away_metrics["fts"] / 100.0,
+                home_clean_sheet_rate=home_metrics["cs"] / 100.0, away_clean_sheet_rate=away_metrics["cs"] / 100.0,
+                btts_rate_home=home_metrics["btts"] / 100.0, btts_rate_away=away_metrics["btts"] / 100.0,
+                home_total_goals_avg=home_metrics["tg"], away_total_goals_avg=away_metrics["tg"],
+                home_goals_scored_avg=home_metrics["gf"], away_goals_scored_avg=away_metrics["gf"],
+                home_goals_conceded_avg=home_metrics["ga"], away_goals_conceded_avg=away_metrics["ga"],
+                over_15_rate_home=home_metrics["over15"] / 100.0, over_15_rate_away=away_metrics["over15"] / 100.0,
+                over_25_rate_home=home_metrics["over25"] / 100.0, over_25_rate_away=away_metrics["over25"] / 100.0,
+                over_35_rate_home=home_metrics["over35"] / 100.0, over_35_rate_away=away_metrics["over35"] / 100.0,
+                sample_size_home=int(home_metrics["gp"]), sample_size_away=int(away_metrics["gp"]),
+            ))
+        return features
+
     def parse_predictions(self, content: bytes, collected_at: datetime) -> list[object]:
         return []

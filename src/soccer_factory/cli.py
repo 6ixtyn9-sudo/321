@@ -164,6 +164,11 @@ def do_validate(args: argparse.Namespace) -> None:
                     if match.match_id not in seen_match_ids:
                         matches.append(match)
                         seen_match_ids.add(match.match_id)
+                # The first daily page is the documented Home-v-Away scope.
+                # Other daily pages are retained as raw snapshots for later
+                # scope-aware enrichment, not duplicated baseline features.
+                if file.startswith("daily_index_") and file.endswith("_1.html"):
+                    features.extend(ss_parser.parse_index_features(content, dt))
             elif "forebet" in file:
                 obs.extend(fb_parser.parse_predictions(content, dt))
             elif "soccerstats_pmatch" in file or file.startswith("pmatch_preview_"):
