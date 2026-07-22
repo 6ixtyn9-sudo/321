@@ -4,9 +4,11 @@ This document describes how to interpret the runtime catalog artifacts produced 
 
 The catalog operates on **Bounded Page-Family Discovery** principles rather than exhaustive crawling. Its outputs represent verified, safely extracted slices of the data domains under observation.
 
+> **Live and fixture catalogs are kept strictly separate.** The live audit writes to `data/catalog_live_audit_v2/`; fixture-mode discovery writes to `data/catalog/`.
+
 ## Catalog Directory Structure
 
-All runtime catalog outputs are stored under `data/catalog/` in environment-specific subdirectories (e.g., `data/catalog/soccerstats/`).
+All runtime catalog outputs are stored under `data/catalog/` in source-specific subdirectories (e.g., `data/catalog/soccerstats/`).
 
 The directory contains three core artifacts:
 
@@ -45,6 +47,7 @@ Important fields:
 - **`content_hash`**: SHA-256 hash of the page HTML. Used to deduplicate identical structural copies over time.
 
 ### Append-Only Guarantee
+
 Historical observations are never overwritten. Even if the same URL is fetched with identical contents, it is appended as a distinct observation keyed by time. If the `content_hash` changes, the snapshot represents a new version of the resource.
 
 ## Known Limitations

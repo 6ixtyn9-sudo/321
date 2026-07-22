@@ -1,56 +1,83 @@
-# Historical Evaluation & Calibration Standard
+# Historical Evaluation & Roadmap
 
-> **Status Notice**: The 321 Soccer Analytics platform is currently a verified, fixture-tested MVP foundation with baseline prediction capability. **Prediction accuracy is not yet established** and cannot be claimed until historical walk-forward backtesting against frozen pre-match snapshots and graded final results is completed.
+> **Status**: The 321 platform is a verified, fixture-tested MVP with baseline prediction capability. **Prediction accuracy is not yet established** — walk-forward backtesting against frozen pre-match snapshots and graded final results is required before any accuracy claims can be made.
 
 ---
 
-## 1. Required Data Ledger Fields
+## Where We Are
 
-To establish empirical prediction quality, every recorded historical prediction MUST capture the following immutable ledger fields:
+The MVP foundation is complete:
 
-| Field Name | Type | Description |
-|------------|------|-------------|
-| `snapshot_id` | VARCHAR | Unique ID of the preserved raw HTML snapshot |
-| `prediction_id` | VARCHAR | Unique ID of the frozen prediction record |
-| `match_id` | VARCHAR | Unique ID of the canonical match |
-| `collected_at` | TIMESTAMP | Pre-match snapshot collection timestamp (MUST be < `scheduled_kickoff`) |
-| `prediction_timestamp` | TIMESTAMP | Model execution / prediction freeze timestamp |
-| `scheduled_kickoff` | TIMESTAMP | Official kickoff time |
-| `market` | VARCHAR | Target market (1X2, Double chance, Over/Under 2.5, BTTS) |
-| `selection` | VARCHAR | Selection predicted by our model |
-| `model_probability` | DOUBLE | Probability assigned by internal model |
-| `forebet_selection` | VARCHAR | Selection predicted by Forebet (if available) |
-| `forebet_probability` | DOUBLE | Probability assigned by Forebet (if available) |
-| `confidence_grade` | VARCHAR | Internal confidence grade (A, B, C, X) |
+- ✅ **Bounded discovery** — Safe page-family enumeration without exhaustive crawling
+- ✅ **Live collection** — SoccerStats index + preview + result collection with lifecycle tracking
+- ✅ **Fixture links** — `fixture_links.jsonl` with `lifecycle_state`, `kickoff_utc`, `pre_match_eligible`
+- ✅ **Data schemas** — Pydantic-validated contracts for every stage
+- ✅ **Parsers** — SoccerStats (index + preview) and Forebet (predictions)
+- ✅ **Baseline model** — PPG heuristic for 1X2, Double Chance, O/U 2.5, BTTS
+- ✅ **Identity matcher** — Fuzzy team matching with quarantine for ambiguous entities
+- ✅ **Leakage protection** — `collected_at < kickoff_utc` enforced
+- ✅ **Confidence grading** — A/B/C/X based on sample size
+- ✅ **Run isolation** — Each live collection run is fully self-contained
+- ✅ **Regression baselines** — Canonical hashes prove zero downstream drift
+- ✅ **Test coverage** — 80%+ with `--cov-fail-under=80`
+
+## Where We're Going
+
+### Phase 1: Historical Validation (current focus)
+
+1. **Accumulate ≥500 pre-match snapshots per league** via daily live collection
+2. **Freeze predictions** before kickoff (immutable ledger records)
+3. **Collect results** post-match via SoccerStats result-detail pages
+4. **Walk-forward grade** each prediction against actual outcome
+5. **Produce calibration curves** and Brier/Log-Loss per market
+
+### Phase 2: Evaluation Infrastructure
+
+| Metric | Target | When |
+|--------|--------|------|
+| Brier Score per market | ≤0.25 | ≥500 matches/league |
+| ECE across deciles | ≤0.10 | ≥500 matches/league |
+| Accuracy (1X2) | TBD | ≥1000 matches |
+| Agreement vs disagreement analysis | Model vs Forebet | ≥500 matches |
+
+### Phase 3: Model Improvements (only after Phase 1+2)
+
+- Feature engineering improvements
+- Alternative model approaches
+- Market expansion (corners, cards, HT/FT, Asian handicap, player props)
+- **Live betting / trading is explicitly out of scope** — permanently prohibited
+
+---
+
+## Required Ledger Fields for Historical Prediction Quality
+
+Every recorded prediction MUST capture these fields for walk-forward evaluation:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `snapshot_id` | VARCHAR | Raw HTML snapshot ID |
+| `prediction_id` | VARCHAR | Frozen prediction record ID |
+| `match_id` | VARCHAR | Canonical match ID |
+| `collected_at` | TIMESTAMP | Pre-match collection (MUST be < `scheduled_kickoff`) |
+| `prediction_timestamp` | TIMESTAMP | Prediction freeze timestamp |
+| `scheduled_kickoff` | TIMESTAMP | Official kickoff |
+| `market` | VARCHAR | 1X2, double_chance, over25, btts |
+| `selection` | VARCHAR | Predicted selection |
+| `model_probability` | DOUBLE | Internal model probability |
+| `forebet_selection` | VARCHAR | Forebet selection (if available) |
+| `forebet_probability` | DOUBLE | Forebet probability (if available) |
+| `confidence_grade` | VARCHAR | A, B, C, X |
 | `final_score` | VARCHAR | Verified final score (e.g. `2-1`) |
-| `actual_outcome` | VARCHAR | Verified actual 1X2 outcome (`1`, `X`, `2`) |
-| `market_settled_result` | BOOLEAN | `True` if prediction was correct, `False` if incorrect |
-| `parser_version` | VARCHAR | Version of parser used for feature extraction |
-| `model_version` | VARCHAR | Version of baseline prediction model |
+| `actual_outcome` | VARCHAR | Verified 1X2 outcome (`1`, `X`, `2`) |
+| `market_settled_result` | BOOLEAN | True if prediction correct |
+| `parser_version` | VARCHAR | Parser version |
+| `model_version` | VARCHAR | Model version |
 
 ---
 
-## 2. Evaluation Metric Matrix
-
-Once historical snapshot collection produces a ledger of ≥ 500 matches per league, performance reports MUST break down accuracy and calibration across:
-
-1. **Model Comparison**: Internal Baseline Model vs. Forebet Source Predictions
-2. **Agreement vs. Disagreement**:
-   - High-confidence agreement cases (Model & Forebet agree)
-   - Disagreement cases (Model predicts A, Forebet predicts B)
-3. **Segmentation**:
-   - Per-League (Premier League, La Liga, Serie A, Bundesliga, Ligue 1)
-   - Per-Market (1X2, Double chance, Over/Under 2.5, BTTS)
-   - Per-Confidence-Grade (Grade A vs Grade B vs Grade C)
-4. **Calibration Metrics**:
-   - Brier Score / Log-Loss per market
-   - Expected Calibration Error (ECE) across probability deciles
-
----
-
-## 3. Scope Restrictions
+## Scope Restrictions
 
 Until historical evaluation is complete:
-- **No additional markets** (e.g., corners, cards, HT/FT, Asian handicap, player props) will be introduced.
-- **No live betting / real-time trading** execution will be enabled.
-- All predictions remain **experimental baseline estimates**.
+- **No additional markets** (corners, cards, HT/FT, Asian handicap, player props)
+- **No live betting / real-time trading** execution
+- All predictions remain **experimental baseline estimates**
