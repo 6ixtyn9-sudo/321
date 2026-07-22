@@ -349,7 +349,7 @@ class SoccerStatsParser(BaseParser):
             home_ppg=home.get("PPG"), away_ppg=away.get("PPG"),
             sample_size_home=int(home.get("GP", 0.0)), sample_size_away=int(away.get("GP", 0.0))) ]
 
-    def parse_index_features(self, content: bytes, collected_at: datetime) -> List[Features]:
+    def parse_index_features(self, content: bytes, collected_at: datetime, feature_scope: str = "home_away") -> List[Features]:
         """Extract the normal daily-index Home/Away metric rows.
 
         The index is the baseline source: preview pages are enrichment only.
@@ -393,7 +393,7 @@ class SoccerStatsParser(BaseParser):
                 continue
             features.append(Features(
                 match_id=match.match_id, collected_at=collected_at, feature_cutoff=collected_at,
-                match_kickoff=match.scheduled_kickoff, data_type="pre-match", source_status="pre-match",
+                match_kickoff=match.scheduled_kickoff, data_type="pre-match", source_status="pre-match", feature_scope=feature_scope,
                 home_ppg=home_metrics["ppg"], away_ppg=away_metrics["ppg"],
                 home_win_rate=home_metrics["win"] / 100.0, away_win_rate=away_metrics["win"] / 100.0,
                 home_failed_to_score_rate=home_metrics["fts"] / 100.0, away_failed_to_score_rate=away_metrics["fts"] / 100.0,

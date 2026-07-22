@@ -11,6 +11,7 @@ class Features(BaseModel):
     match_kickoff: datetime
     data_type: str
     source_status: str
+    feature_scope: str = "home_away"  # home_away | all_games | last_8
 
     # Example generic features
     home_ppg: Optional[float] = Field(default=None, ge=0.0, le=3.0)

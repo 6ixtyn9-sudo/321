@@ -234,11 +234,10 @@ def do_validate(args: argparse.Namespace) -> None:
                     if match.match_id not in seen_match_ids:
                         matches.append(match)
                         seen_match_ids.add(match.match_id)
-                # The first daily page is the documented Home-v-Away scope.
-                # Other daily pages are retained as raw snapshots for later
-                # scope-aware enrichment, not duplicated baseline features.
-                if file.startswith("daily_index_") and file.endswith("_1.html"):
-                    features.extend(ss_parser.parse_index_features(content, dt))
+                # Each daily index is a distinct statistical scope for the same fixture.
+                if file.startswith("daily_index_"):
+                    scope = "home_away" if file.endswith("_1.html") else "all_games" if file.endswith("_2.html") else "last_8" if file.endswith("_3.html") else "unknown"
+                    features.extend(ss_parser.parse_index_features(content, dt, feature_scope=scope))
             elif "forebet" in file:
                 obs.extend(fb_parser.parse_predictions(content, dt))
             elif "soccerstats_pmatch" in file or file.startswith("pmatch_preview_"):
@@ -252,15 +251,16 @@ def do_validate(args: argparse.Namespace) -> None:
     # index-derived record, but cannot create duplicate feature rows.
     merged_features = {}
     for feature in features:
-        existing = merged_features.get(feature.match_id)
+        merge_key = (feature.match_id, feature.feature_scope)
+        existing = merged_features.get(merge_key)
         if existing is None:
-            merged_features[feature.match_id] = feature
+            merged_features[merge_key] = feature
             continue
         combined = existing.model_dump()
         for key, value in feature.model_dump().items():
             if combined.get(key) is None and value is not None:
                 combined[key] = value
-        merged_features[feature.match_id] = Features.model_validate(combined)
+        merged_features[merge_key] = Features.model_validate(combined)
     features = list(merged_features.values())
 
     # Save valid parsed data to interim
