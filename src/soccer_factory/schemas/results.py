@@ -1,29 +1,34 @@
-from pydantic import BaseModel, ConfigDict, Field
-from datetime import datetime
-from typing import Optional
+"""Lossless structured extraction of public SoccerStats result-detail pages."""
+from __future__ import annotations
 
-class Result(BaseModel):
-    model_config = ConfigDict(strict=True)
+from bs4 import BeautifulSoup
+from typing import Any
 
-    match_id: str
-    home_score: Optional[int] = Field(default=None, ge=0)
-    away_score: Optional[int] = Field(default=None, ge=0)
-    status: str
-    match_outcome: Optional[str] = None  # 1, X, 2
-    total_goals: Optional[int] = Field(default=None, ge=0)
-    btts_result: Optional[bool] = None
-    over_25_result: Optional[bool] = None
 
-class Grading(BaseModel):
-    model_config = ConfigDict(strict=True)
+def _text(node: Any) -> str:
+    return " ".join(node.get_text(" ", strip=True).split())
 
-    prediction_id: str
-    match_id: str
-    correct: Optional[bool]
-    actual_outcome: Optional[str]
-    final_score: Optional[str]
-    total_goals: Optional[int]
-    btts_result: Optional[bool]
-    graded_at: datetime
-    grading_source: str
-    unresolved_status: Optional[str] = None
+
+def extract_result_detail(content: bytes) -> dict[str, Any]:
+    """Return every non-empty HTML table as labelled rows without interpretation.
+
+    This is deliberately broad: it preserves all public statistical material for
+    later semantic parsers, rather than discarding sections we do not yet model.
+    """
+    soup = BeautifulSoup(content, "lxml")
+    title = _text(soup.title) if soup.title else ""
+    tables = []
+    for index, table in enumerate(soup.find_all("table"), start=1):
+        rows = []
+        for tr in table.find_all("tr", recursive=False):
+            cells = [_text(cell) for cell in tr.find_all(["td", "th"], recursive=False)]
+            if any(cells):
+                rows.append(cells)
+        if rows:
+            tables.append({"table_index": index, "rows": rows})
+    headings = []
+    for heading in soup.find_all(["h1", "h2", "h3"]):
+        value = _text(heading)
+        if value and value not in headings:
+            headings.append(value)
+    return {"page_title": title, "headings": headings, "tables": tables}

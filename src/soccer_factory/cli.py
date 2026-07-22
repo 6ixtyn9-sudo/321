@@ -9,6 +9,7 @@ from src.soccer_factory.sources.soccerstats.parser import SoccerStatsParser
 from src.soccer_factory.sources.forebet.parser import ForebetParser
 from src.soccer_factory.sources.http_collector import HttpCollector
 from src.soccer_factory.sources.soccerstats.live import collect_daily_bundle
+from src.soccer_factory.sources.soccerstats.results import extract_result_detail
 from src.soccer_factory.identity.matcher import match_teams
 from src.soccer_factory.models.baseline import generate_predictions, generate_no_predictions
 from src.soccer_factory.schemas.features import Features
@@ -37,6 +38,7 @@ def parse_args() -> argparse.Namespace:
 
     subparsers.add_parser("collect", parents=[parent_parser])
     subparsers.add_parser("validate", parents=[parent_parser])
+    subparsers.add_parser("extract-results", parents=[parent_parser])
     subparsers.add_parser("build-features", parents=[parent_parser])
     subparsers.add_parser("predict", parents=[parent_parser])
     subparsers.add_parser("freeze", parents=[parent_parser])
@@ -111,6 +113,37 @@ def do_collect(args: argparse.Namespace) -> None:
         with open(f"{DATA_RAW}/manifest.json", "w") as f:
             json.dump(manifest, f)
         print(f"Live SoccerStats collection complete. {successful}/{len(snapshots)} snapshots fetched.")
+
+def do_extract_results(args: argparse.Namespace) -> None:
+    """Turn a run's saved result-detail pages into a lossless JSON dataset."""
+    setup_dirs()
+    run_id = getattr(args, "run_id", None)
+    if not run_id or os.path.basename(run_id) != run_id or run_id in {".", ".."}:
+        raise SystemExit("Error: extract-results requires a valid --run-id.")
+    run_dir = Path(DATA_RAW) / "soccerstats" / run_id
+    links_path = run_dir / "fixture_links.jsonl"
+    if not links_path.exists():
+        raise SystemExit(f"Error: result collection run not found: {run_id}")
+    records = []
+    for line in links_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        link = json.loads(line)
+        result_path = link.get("result_snapshot_path")
+        if not link.get("result_collected") or not result_path:
+            continue
+        page_path = Path(result_path)
+        if not page_path.exists():
+            continue
+        records.append({
+            "match_id": link.get("match_id"), "competition": link.get("competition"),
+            "home_team": link.get("home_team"), "away_team": link.get("away_team"),
+            "source_url": link.get("detail_url"), "snapshot_path": str(page_path),
+            "extracted": extract_result_detail(page_path.read_bytes()),
+        })
+    output = Path(DATA_REPORTS) / f"soccerstats_result_details_{run_id}.json"
+    output.write_text(json.dumps({"run_id": run_id, "result_pages": records}, indent=2), encoding="utf-8")
+    print(f"Result extraction complete. {len(records)} complete result pages written to {output}")
 
 def do_validate(args: argparse.Namespace) -> None:
     setup_dirs()
@@ -538,6 +571,8 @@ def main() -> None:
         do_collect(args)
     elif args.command == "validate":
         do_validate(args)
+    elif args.command == "extract-results":
+        do_extract_results(args)
     elif args.command == "build-features":
         do_build_features(args)
     elif args.command == "predict":
