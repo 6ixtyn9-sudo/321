@@ -28,4 +28,4 @@ def test_live_mode_separation(tmp_path):
         with patch("src.soccer_factory.discovery.catalog.CatalogStore") as mock_store_class:
             with patch("src.soccer_factory.discovery.crawler.BoundedCrawler.crawl", return_value=([], dummy_manifest)):
                 do_discover(args)
-                mock_store_class.assert_called_with(catalog_dir='data/catalog_live_audit')
+                mock_store_class.assert_called_with(catalog_dir='data/catalog_live_audit_v2')
