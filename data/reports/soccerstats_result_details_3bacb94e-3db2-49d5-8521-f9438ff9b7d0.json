@@ -8,6 +8,16 @@
       "away_team": "C. Croatia",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=australia10&mrevid=m31&st1=3&st2=6",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_001.html",
+      "summary": {
+        "final_score": {
+          "home": 2,
+          "away": 5
+        },
+        "half_time_score": null,
+        "total_goals": 7,
+        "btts": true,
+        "match_stats": {}
+      },
       "extracted": {
         "page_title": "Australia - NPL Capital Territory - match details and result analysis",
         "headings": [
@@ -5680,6 +5690,37 @@
       "away_team": "Bahia",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=brazil&mrevid=m185&st1=7&st2=18",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_002.html",
+      "summary": {
+        "final_score": {
+          "home": 1,
+          "away": 1
+        },
+        "half_time_score": {
+          "home": 1,
+          "away": 0
+        },
+        "total_goals": 2,
+        "btts": true,
+        "match_stats": {
+          "ball_possession": {
+            "home": 50,
+            "away": 50
+          },
+          "corners": {
+            "home": 6,
+            "away": 4
+          },
+          "time_leading": {
+            "home": 13,
+            "away": 0
+          },
+          "domination_index": {
+            "home": 54,
+            "away": 46
+          },
+          "outcome_surprise_level": 25.0
+        }
+      },
       "extracted": {
         "page_title": "Brazil - Serie A - match details and result analysis",
         "headings": [
@@ -16470,6 +16511,16 @@
       "away_team": "America MG",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=brazil2&mrevid=m184&st1=7&st2=10",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_003.html",
+      "summary": {
+        "final_score": {
+          "home": 2,
+          "away": 1
+        },
+        "half_time_score": null,
+        "total_goals": 3,
+        "btts": true,
+        "match_stats": {}
+      },
       "extracted": {
         "page_title": "Brazil - Serie B - match details and result analysis",
         "headings": [
@@ -26921,6 +26972,16 @@
       "away_team": "Criciuma",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=brazil2&mrevid=m189&st1=17&st2=6",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_004.html",
+      "summary": {
+        "final_score": {
+          "home": 0,
+          "away": 1
+        },
+        "half_time_score": null,
+        "total_goals": 1,
+        "btts": false,
+        "match_stats": {}
+      },
       "extracted": {
         "page_title": "Brazil - Serie B - match details and result analysis",
         "headings": [
@@ -37320,6 +37381,16 @@
       "away_team": "Delfin",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=ecuador&mrevid=m162&st1=5&st2=3",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_005.html",
+      "summary": {
+        "final_score": {
+          "home": 1,
+          "away": 0
+        },
+        "half_time_score": null,
+        "total_goals": 1,
+        "btts": false,
+        "match_stats": {}
+      },
       "extracted": {
         "page_title": "Ecuador - Liga Pro - match details and result analysis",
         "headings": [
@@ -47166,6 +47237,16 @@
       "away_team": "Klubi-04",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=finland2&mrevid=m75&st1=8&st2=7",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_006.html",
+      "summary": {
+        "final_score": {
+          "home": 0,
+          "away": 2
+        },
+        "half_time_score": null,
+        "total_goals": 2,
+        "btts": false,
+        "match_stats": {}
+      },
       "extracted": {
         "page_title": "Finland - Ykkosliga - match details and result analysis",
         "headings": [
@@ -56302,6 +56383,33 @@
       "away_team": "Gangwon",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=southkorea&mrevid=m111&st1=9&st2=2",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_007.html",
+      "summary": {
+        "final_score": {
+          "home": 1,
+          "away": 1
+        },
+        "half_time_score": null,
+        "total_goals": 2,
+        "btts": true,
+        "match_stats": {
+          "ball_possession": {
+            "home": 65,
+            "away": 35
+          },
+          "corners": {
+            "home": 5,
+            "away": 2
+          },
+          "time_leading": {
+            "home": 8,
+            "away": 0
+          },
+          "domination_index": {
+            "home": 67,
+            "away": 33
+          }
+        }
+      },
       "extracted": {
         "page_title": "South Korea - K League 1 - match details and result analysis",
         "headings": [
@@ -66063,6 +66171,33 @@
       "away_team": "Daejeon Citizen",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=southkorea&mrevid=m109&st1=7&st2=11",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_008.html",
+      "summary": {
+        "final_score": {
+          "home": 0,
+          "away": 0
+        },
+        "half_time_score": null,
+        "total_goals": 0,
+        "btts": false,
+        "match_stats": {
+          "ball_possession": {
+            "home": 61,
+            "away": 39
+          },
+          "corners": {
+            "home": 5,
+            "away": 5
+          },
+          "time_leading": {
+            "home": 0,
+            "away": 0
+          },
+          "domination_index": {
+            "home": 59,
+            "away": 41
+          }
+        }
+      },
       "extracted": {
         "page_title": "South Korea - K League 1 - match details and result analysis",
         "headings": [
@@ -75731,6 +75866,33 @@
       "away_team": "Incheon Utd",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=southkorea&mrevid=m110&st1=1&st2=3",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_009.html",
+      "summary": {
+        "final_score": {
+          "home": 1,
+          "away": 2
+        },
+        "half_time_score": null,
+        "total_goals": 3,
+        "btts": true,
+        "match_stats": {
+          "ball_possession": {
+            "home": 36,
+            "away": 64
+          },
+          "corners": {
+            "home": 2,
+            "away": 2
+          },
+          "time_leading": {
+            "home": 0,
+            "away": 2
+          },
+          "domination_index": {
+            "home": 38,
+            "away": 62
+          }
+        }
+      },
       "extracted": {
         "page_title": "South Korea - K League 1 - match details and result analysis",
         "headings": [
@@ -85578,6 +85740,16 @@
       "away_team": "Helsingborg",
       "source_url": "https://www.soccerstats.com/round_details.asp?league=sweden2&mrevid=m120&st1=9&st2=1",
       "snapshot_path": "data/raw/soccerstats/3bacb94e-3db2-49d5-8521-f9438ff9b7d0/round_details_result_010.html",
+      "summary": {
+        "final_score": {
+          "home": 2,
+          "away": 3
+        },
+        "half_time_score": null,
+        "total_goals": 5,
+        "btts": true,
+        "match_stats": {}
+      },
       "extracted": {
         "page_title": "Sweden - Superettan - match details and result analysis",
         "headings": [

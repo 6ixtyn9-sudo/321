@@ -49,3 +49,67 @@ def extract_result_detail(content: bytes) -> dict[str, Any]:
         "headings": headings,
         "tables": tables,
     }
+
+import re
+
+
+def summarize_result_detail(content: bytes, home_team: str, away_team: str) -> dict[str, Any]:
+    """Extract explicit match-level facts from a SoccerStats result page."""
+    text = _text(BeautifulSoup(content, "lxml"))
+
+    def pair(pattern: str) -> dict[str, int] | None:
+        found = re.search(pattern, text, re.I)
+        if not found:
+            return None
+        return {
+            "home": int(found.group(1)),
+            "away": int(found.group(2)),
+        }
+
+    final_score = pair(
+        re.escape(home_team)
+        + r"\s+(\d+)\s*(?::|\s)\s*(\d+)\s+"
+        + re.escape(away_team)
+    )
+
+    half_time = pair(
+        r"Half-time score:\s*\(\s*(\d+)\s*[-:]\s*(\d+)\s*\)"
+    )
+
+    match_stats: dict[str, Any] = {}
+
+    stat_patterns = {
+        "ball_possession": r"Ball possession\s+(\d+)%\s+(\d+)%",
+        "corners": r"Corners\s+(\d+)\s+(\d+)",
+        "time_leading": r"% of time leading\s+(\d+)%\s+(\d+)%",
+        "domination_index": r"Domination Index\s+(\d+)%\s+(\d+)%",
+    }
+
+    for name, pattern in stat_patterns.items():
+        found = pair(pattern)
+        if found is not None:
+            match_stats[name] = found
+
+    surprise = re.search(
+        r"(?:Outcome )?Surprise-Level:\s*(\d+(?:\.\d+)?)%",
+        text,
+        re.I,
+    )
+
+    if surprise:
+        match_stats["outcome_surprise_level"] = float(surprise.group(1))
+
+    return {
+        "final_score": final_score,
+        "half_time_score": half_time,
+        "total_goals": (
+            final_score["home"] + final_score["away"]
+            if final_score else None
+        ),
+        "btts": bool(
+            final_score
+            and final_score["home"] > 0
+            and final_score["away"] > 0
+        ),
+        "match_stats": match_stats,
+    }
