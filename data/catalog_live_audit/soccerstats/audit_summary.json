@@ -1,14 +1,12 @@
 {
   "source": "soccerstats",
-  "run_id": "a5d0cc30931548cbb314131d2c0cfa01",
-  "started_at": "2026-07-21T21:32:06.046467Z",
-  "completed_at": "2026-07-21T21:38:08.522641Z",
+  "run_id": "ec75dab9085a41b7a1112daa65bf6408",
   "seed_count": 16,
-  "pages_discovered": 100,
+  "pages_discovered": 25,
   "pages_fetched": 3,
   "pages_parsed": 3,
-  "pages_failed": 96,
-  "pages_restricted": 1,
+  "pages_failed": 22,
+  "pages_restricted": 0,
   "pages_external": 0,
   "families_found": [
     "form_table",
@@ -58,6 +56,6 @@
     "total_goals",
     "wide_table"
   ],
-  "network_requests": 99,
-  "stop_reason": "max_pages_per_source"
+  "network_requests": 25,
+  "stop_reason": "max_total_requests"
 }

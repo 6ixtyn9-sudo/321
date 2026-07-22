@@ -1,12 +1,10 @@
 {
   "source": "forebet",
-  "run_id": "8fc93224e0db4f3a8cc4097928b99e4d",
-  "started_at": "2026-07-21T21:36:01.981839Z",
-  "completed_at": "2026-07-21T21:37:12.362686Z",
+  "run_id": "41f1af5b9fb840e6ad552d6c717264da",
   "seed_count": 11,
-  "pages_discovered": 15,
-  "pages_fetched": 15,
-  "pages_parsed": 15,
+  "pages_discovered": 30,
+  "pages_fetched": 18,
+  "pages_parsed": 18,
   "pages_failed": 0,
   "pages_restricted": 0,
   "pages_external": 0,
@@ -18,6 +16,7 @@
     "match_preview_article",
     "match_preview_index",
     "prediction_list",
+    "site_information",
     "team_comparison",
     "team_page",
     "top_trends",
@@ -42,11 +41,10 @@
     "non_soccer",
     "restricted",
     "result_market",
-    "site_information",
     "tomorrow_predictions",
     "values_or_odds",
     "weekend_predictions"
   ],
-  "network_requests": 15,
+  "network_requests": 18,
   "stop_reason": "max_pages_per_source"
 }

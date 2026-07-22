@@ -5,7 +5,7 @@ Backs each source with a directory under ``data/catalog/{source}/``:
 
     catalog.jsonl          — one CatalogEntry JSON-line per observation
     representatives.jsonl  — one RepresentativePage JSON-line per family
-    run_manifest.json      — most recent RunManifest (overwritten per run)
+    audit_summary.json     — most recent RunManifest (overwritten per run)
     field_observations.jsonl — FieldDictionaryEntry rows (append-only)
 
 Immutability guarantee
@@ -55,7 +55,7 @@ class CatalogStore:
         return os.path.join(self._source_dir(source), "representatives.jsonl")
 
     def _run_manifest_path(self, source: str) -> str:
-        return os.path.join(self._source_dir(source), "run_manifest.json")
+        return os.path.join(self._source_dir(source), "audit_summary.json")
 
     def _field_observations_path(self, source: str) -> str:
         return os.path.join(self._source_dir(source), "field_observations.jsonl")
@@ -158,8 +158,11 @@ class CatalogStore:
     def save_run_manifest(self, source: str, manifest: RunManifest) -> None:
         self._ensure_dir(source)
         path = self._run_manifest_path(source)
+        # Exclude unstable timestamps for reproducibility
+        dump = manifest.model_dump(exclude={"started_at", "completed_at"})
         with open(path, "w", encoding="utf-8") as fh:
-            fh.write(manifest.model_dump_json(indent=2))
+            import json
+            json.dump(dump, fh, indent=2)
 
     def append_field_observations(self, source: str, entries: List[FieldDictionaryEntry]) -> None:
         self._ensure_dir(source)
