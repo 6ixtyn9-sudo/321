@@ -43,6 +43,7 @@ src/soccer_factory/sources/forebet/parser.py
 src/soccer_factory/sources/forebet/urls.py
 src/soccer_factory/sources/forebet/validators.py
 src/soccer_factory/sources/soccerstats/collector.py
+src/soccer_factory/sources/soccerstats/live.py
 src/soccer_factory/sources/soccerstats/parser.py
 src/soccer_factory/sources/soccerstats/urls.py
 src/soccer_factory/sources/soccerstats/validators.py
