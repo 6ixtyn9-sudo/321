@@ -70,7 +70,13 @@ class TestClassification:
         assert classify("https://forebet.com/en/football-predictions-from-yesterday", "forebet") == "finished_predictions"
         assert classify("https://forebet.com/en/live-football-tips", "forebet") == "live_predictions"
         assert classify("https://forebet.com/en/football/matches/atletico-mineiro-bahia-2418076", "forebet") == "football_match"
+        # Accented / URL-encoded match detail
+        assert classify("https://forebet.com/en/football/matches/atl%C3%A9tico-mineiro-bah%C3%ADa-2418076", "forebet") == "football_match"
+        assert classify("https://forebet.com/en/football/matches/atlético-mineiro-bahía-2418076", "forebet") == "football_match"
         assert classify("https://forebet.com/en/football-match-previews/28554-atletico-mineiro-seek-home-edge-against-bahia-in-tricky-brasileiro-serie-a-clash", "forebet") == "match_preview_article"
+        # Accented / URL-encoded match preview
+        assert classify("https://forebet.com/en/football-match-previews/28554-atl%C3%A9tico-mineiro-seek-home-edge", "forebet") == "match_preview_article"
+        assert classify("https://forebet.com/en/football-match-previews/28554-atlético-mineiro-seek-home", "forebet") == "match_preview_article"
         assert classify("https://forebet.com/en/football-match-previews", "forebet") == "match_preview_index"
         assert classify("https://forebet.com/en/livescore", "forebet") == "livescore"
         assert classify("https://forebet.com/en/injured-players", "forebet") == "injured_players"
@@ -100,6 +106,19 @@ class TestClassification:
         cat, fam = classify_outcome("https://google.com/", "soccerstats")
         assert cat == "external"
         assert fam == "external"
+
+    def test_no_deprecated_aliases(self):
+        # Enforce that deprecated aliases are never classified or present in canonical sets
+        deprecated = {"match_detail", "today", "tomorrow", "live", "finished", "weekend"}
+        
+        from src.soccer_factory.discovery.classifier import FB_FAMILIES
+        from src.soccer_factory.discovery.classifier import SS_FAMILIES
+        
+        for alias in deprecated:
+            assert alias not in FB_FAMILIES
+            assert alias not in SS_FAMILIES
+            assert alias not in all_families("forebet")
+            assert alias not in all_families("soccerstats")
 
 class TestCrawlerLimits:
     def test_circuit_breaker(self):

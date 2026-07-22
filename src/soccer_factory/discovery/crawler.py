@@ -479,11 +479,29 @@ class BoundedCrawler:
 
         # Finalize manifest
         manifest.stop_reason = stop_reason
+        manifest.pages_discovered = len(entries)
+        manifest.pages_fetched = sum(1 for e in entries if e.fetch_status == "ok")
+        manifest.pages_parsed = sum(1 for e in entries if e.parse_status == "ok")
+        manifest.pages_failed = sum(1 for e in entries if e.fetch_status == "failed")
+        manifest.pages_restricted = sum(1 for e in entries if e.fetch_status == "restricted")
+        manifest.pages_external = sum(1 for e in entries if e.fetch_status == "blocked" and e.discovery_status == "external")
+        manifest.pages_unknown = sum(1 for e in entries if e.page_family == "unknown")
+        manifest.pages_attempted = sum(1 for e in entries if e.fetch_status in ("ok", "failed"))
+        
+        failure_reasons: Dict[str, int] = {}
+        for e in entries:
+            if e.fetch_status == "failed" and e.error:
+                reason = e.error
+                failure_reasons[reason] = failure_reasons.get(reason, 0) + 1
+        manifest.failure_reasons = failure_reasons
+        
+        manifest.families_observed_successfully = sorted({e.page_family for e in entries if e.fetch_status == "ok" and e.page_family not in ("unknown", "restricted", "external")})
+        manifest.families_failed = sorted({e.page_family for e in entries if e.fetch_status == "failed" and e.page_family not in ("unknown", "restricted", "external")})
         manifest.families_found = sorted(
             {e.page_family for e in entries if e.page_family not in ("unknown", "restricted", "external")}
         )
         from .classifier import all_families
-        all_fam = set(all_families(source)) - {"unknown", "member_or_restricted"}
+        all_fam = set(all_families(source)) - {"unknown", "restricted", "external"}
         manifest.families_missing = sorted(all_fam - set(manifest.families_found))
         manifest.completed_at = datetime.now(timezone.utc)
 

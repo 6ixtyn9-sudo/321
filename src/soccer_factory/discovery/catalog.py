@@ -95,53 +95,77 @@ class CatalogStore:
     # ------------------------------------------------------------------
 
     def select_representatives(self, source: str) -> List[RepresentativePage]:
-        """Select at most one representative per family.
-
-        Preference order:
-          1. fetch_status == "ok" and http_status == 200
-          2. Highest ``links_found`` count
-        Families with no valid page get an "unavailable" row.
-
-        Existing parsers are detected by checking the known parser list.
-        """
         entries = self.load(source)
+        manifest = self.load_run_manifest(source)
+        mode = manifest.mode if manifest else "fixture"
         known_parser_families = _known_parser_families(source)
+        completed_parser_families = _complete_parser_families(source)
         families = all_families(source)
 
-        # Build per-family buckets of successful entries
+        # Build per-family buckets
         buckets: dict[str, List[CatalogEntry]] = {f: [] for f in families}
         for e in entries:
-            if e.page_family in buckets and e.fetch_status == "ok" and e.http_status == 200:
+            if e.page_family in buckets:
                 buckets[e.page_family].append(e)
 
         reps: List[RepresentativePage] = []
         for family in families:
             candidates = buckets.get(family, [])
+            
+            parser_status = "implemented" if family in known_parser_families else "unimplemented"
+            classifier_status = "implemented"
+            
             if not candidates:
                 reps.append(RepresentativePage(
                     source=source,
                     family=family,
                     example_url="",
-                    observation_status="unavailable",
-                    notes="No successful page found for family",
+                    observation_status="not_observed",
+                    classifier_status=classifier_status,
+                    parser_status=parser_status,
+                    notes="No discovered entry for this family",
                     parser_exists=family in known_parser_families,
+                    parser_complete=family in completed_parser_families,
                 ))
                 continue
-
-            # Pick best: highest links_found
-            best = max(candidates, key=lambda e: e.links_found)
-            reps.append(RepresentativePage(
-                source=source,
-                family=family,
-                example_url=best.url,
-                static_html_available=True,
-                playwright_required=(_guess_playwright(best) == "suspected"),
-                tables_found=best.tables_found,
-                links_found=best.links_found,
-                fields_found=len(best.data_fields_detected),
-                parser_exists=family in known_parser_families,
-                parser_complete=family in _complete_parser_families(source),
-            ))
+                
+            # Filter for successful fetches first
+            successful = [e for e in candidates if e.fetch_status == "ok"]
+            
+            if successful:
+                best = max(successful, key=lambda e: e.links_found)
+                obs_status = "live_observed" if mode == "live" else "fixture_observed"
+                
+                reps.append(RepresentativePage(
+                    source=source,
+                    family=family,
+                    example_url=best.url,
+                    observation_status=obs_status,
+                    classifier_status=classifier_status,
+                    parser_status=parser_status,
+                    static_html_available=True,
+                    playwright_required=(_guess_playwright(best) == "suspected"),
+                    tables_found=best.tables_found,
+                    links_found=best.links_found,
+                    fields_found=len(best.data_fields_detected),
+                    parser_exists=family in known_parser_families,
+                    parser_complete=family in completed_parser_families,
+                ))
+            else:
+                # E.g. all attempts failed
+                best_failed = candidates[0]
+                reps.append(RepresentativePage(
+                    source=source,
+                    family=family,
+                    example_url=best_failed.url,
+                    observation_status="failed",
+                    classifier_status=classifier_status,
+                    parser_status=parser_status,
+                    notes=f"Failed with reason: {best_failed.error}",
+                    parser_exists=family in known_parser_families,
+                    parser_complete=family in completed_parser_families,
+                ))
+                
         return reps
 
     # ------------------------------------------------------------------

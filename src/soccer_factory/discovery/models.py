@@ -56,7 +56,9 @@ class RepresentativePage(BaseModel):
     source: str
     family: str
     example_url: str
-    observation_status: str = "classifier_only" # live_observed | fixture_observed | classifier_only | parser_implemented | parser_unimplemented | unavailable
+    observation_status: str = "not_observed" # live_observed | fixture_observed | not_observed | failed
+    classifier_status: str = "unknown" # implemented | unknown | restricted | external
+    parser_status: str = "unimplemented" # implemented | unimplemented | not_applicable
     static_html_available: bool = True
     playwright_required: bool = False
     tables_found: int = 0
@@ -70,15 +72,23 @@ class RepresentativePage(BaseModel):
 class RunManifest(BaseModel):
     source: str
     run_id: str
+    mode: str = "fixture"
+    audit_version: str = "v1"
+    previous_audit_path: Optional[str] = None
     started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
     seed_count: int = 0
     pages_discovered: int = 0
+    pages_attempted: int = 0
     pages_fetched: int = 0
     pages_parsed: int = 0
     pages_failed: int = 0
     pages_restricted: int = 0
     pages_external: int = 0
+    pages_unknown: int = 0
+    failure_reasons: Dict[str, int] = Field(default_factory=dict)
+    families_observed_successfully: List[str] = Field(default_factory=list)
+    families_failed: List[str] = Field(default_factory=list)
     families_found: List[str] = Field(default_factory=list)
     families_missing: List[str] = Field(default_factory=list)
     network_requests: int = 0

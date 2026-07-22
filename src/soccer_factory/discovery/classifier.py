@@ -88,7 +88,6 @@ FB_FAMILIES: list[str] = [
     "corners",
     "cards",
     "football_match",
-    "match_detail",
     "match_preview_index",
     "match_preview_article",
     "trends",
