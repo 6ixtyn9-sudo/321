@@ -1,0 +1,208 @@
+{
+  "predictions": [
+    {
+      "prediction_id": "46a775cf-066b-5623-b076-fc58f0afc6f6",
+      "match_id": "6ad7931b-e4f8-51d4-82c4-cc4ba24b3887",
+      "market": "1x2",
+      "selection": "X",
+      "probability": 0.35,
+      "confidence_grade": "B",
+      "model_version": "baseline_1.0",
+      "feature_cutoff": "2026-07-22T05:17:00.618233Z",
+      "created_at": "2026-07-22T05:17:00.670772Z",
+      "frozen_at": "2026-07-22T05:17:00.674611+00:00",
+      "official": false,
+      "reasons": [
+        "Usable sample size"
+      ],
+      "data_quality": "verified"
+    },
+    {
+      "prediction_id": "4b1bea2d-9bd5-52e6-98d9-af08ce4b5474",
+      "match_id": "6ad7931b-e4f8-51d4-82c4-cc4ba24b3887",
+      "market": "double_chance",
+      "selection": "1X",
+      "probability": 0.65,
+      "confidence_grade": "B",
+      "model_version": "baseline_1.0",
+      "feature_cutoff": "2026-07-22T05:17:00.618233Z",
+      "created_at": "2026-07-22T05:17:00.670772Z",
+      "frozen_at": "2026-07-22T05:17:00.674611+00:00",
+      "official": false,
+      "reasons": [
+        "Usable sample size"
+      ],
+      "data_quality": "verified"
+    },
+    {
+      "prediction_id": "4ac238cd-6658-5ac2-97b1-3a4dabb4391d",
+      "match_id": "6ad7931b-e4f8-51d4-82c4-cc4ba24b3887",
+      "market": "over25",
+      "selection": "Over 2.5",
+      "probability": 0.55,
+      "confidence_grade": "B",
+      "model_version": "baseline_1.0",
+      "feature_cutoff": "2026-07-22T05:17:00.618233Z",
+      "created_at": "2026-07-22T05:17:00.670772Z",
+      "frozen_at": "2026-07-22T05:17:00.674611+00:00",
+      "official": false,
+      "reasons": [
+        "Usable sample size"
+      ],
+      "data_quality": "verified"
+    },
+    {
+      "prediction_id": "be31a0ea-2e69-5759-a154-100418a7d272",
+      "match_id": "6ad7931b-e4f8-51d4-82c4-cc4ba24b3887",
+      "market": "btts",
+      "selection": "Yes",
+      "probability": 0.55,
+      "confidence_grade": "B",
+      "model_version": "baseline_1.0",
+      "feature_cutoff": "2026-07-22T05:17:00.618233Z",
+      "created_at": "2026-07-22T05:17:00.670772Z",
+      "frozen_at": "2026-07-22T05:17:00.674611+00:00",
+      "official": false,
+      "reasons": [
+        "Usable sample size"
+      ],
+      "data_quality": "verified"
+    }
+  ],
+  "no_predictions": [
+    {
+      "match_id": "6a3370ef-b037-530a-af87-cb2dfc352909",
+      "market": "1x2",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671047Z"
+    },
+    {
+      "match_id": "6a3370ef-b037-530a-af87-cb2dfc352909",
+      "market": "double_chance",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671047Z"
+    },
+    {
+      "match_id": "6a3370ef-b037-530a-af87-cb2dfc352909",
+      "market": "over25",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671047Z"
+    },
+    {
+      "match_id": "6a3370ef-b037-530a-af87-cb2dfc352909",
+      "market": "btts",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671047Z"
+    },
+    {
+      "match_id": "3a63531c-6607-535a-8262-2072dfde5fcd",
+      "market": "1x2",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671074Z"
+    },
+    {
+      "match_id": "3a63531c-6607-535a-8262-2072dfde5fcd",
+      "market": "double_chance",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671074Z"
+    },
+    {
+      "match_id": "3a63531c-6607-535a-8262-2072dfde5fcd",
+      "market": "over25",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671074Z"
+    },
+    {
+      "match_id": "3a63531c-6607-535a-8262-2072dfde5fcd",
+      "market": "btts",
+      "status": "no_prediction",
+      "reason": "missing_feature",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671074Z"
+    },
+    {
+      "match_id": "237a15ae-c024-5f81-9cd9-160c3f84fb11",
+      "market": "1x2",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671089Z"
+    },
+    {
+      "match_id": "237a15ae-c024-5f81-9cd9-160c3f84fb11",
+      "market": "double_chance",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671089Z"
+    },
+    {
+      "match_id": "237a15ae-c024-5f81-9cd9-160c3f84fb11",
+      "market": "over25",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671089Z"
+    },
+    {
+      "match_id": "237a15ae-c024-5f81-9cd9-160c3f84fb11",
+      "market": "btts",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671089Z"
+    },
+    {
+      "match_id": "3f04913d-c471-59fb-8da5-bbad25543329",
+      "market": "1x2",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671103Z"
+    },
+    {
+      "match_id": "3f04913d-c471-59fb-8da5-bbad25543329",
+      "market": "double_chance",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671103Z"
+    },
+    {
+      "match_id": "3f04913d-c471-59fb-8da5-bbad25543329",
+      "market": "over25",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671103Z"
+    },
+    {
+      "match_id": "3f04913d-c471-59fb-8da5-bbad25543329",
+      "market": "btts",
+      "status": "no_prediction",
+      "reason": "source_mismatch",
+      "data_quality": "unverified",
+      "created_at": "2026-07-22T05:17:00.671103Z"
+    }
+  ],
+  "frozen_at": "2026-07-22T05:17:00.674611+00:00",
+  "summary": {
+    "official_predictions_count": 4,
+    "no_predictions_count": 16,
+    "total_match_market_pairs": 20
+  }
+}
