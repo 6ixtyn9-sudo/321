@@ -1,0 +1,18 @@
+{
+  "normalization_version": "1.0",
+  "excluded_fields": [
+    "run_id",
+    "created_at",
+    "updated_at",
+    "generated_at",
+    "fetched_at",
+    "git_commit"
+  ],
+  "artifacts": {
+    "features.json": "missing",
+    "predictions.json": "missing",
+    "no_predictions.json": "missing",
+    "reconciliation.json": "missing",
+    "report_YYYY-MM-DD.json": "missing"
+  }
+}
