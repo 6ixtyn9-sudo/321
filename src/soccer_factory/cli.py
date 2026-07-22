@@ -125,6 +125,7 @@ def do_extract_results(args: argparse.Namespace) -> None:
     if not links_path.exists():
         raise SystemExit(f"Error: result collection run not found: {run_id}")
     records = []
+    seen_result_paths = set()
     for line in links_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
@@ -133,8 +134,9 @@ def do_extract_results(args: argparse.Namespace) -> None:
         if not link.get("result_collected") or not result_path:
             continue
         page_path = Path(result_path)
-        if not page_path.exists():
+        if not page_path.exists() or page_path in seen_result_paths:
             continue
+        seen_result_paths.add(page_path)
         records.append({
             "match_id": link.get("match_id"), "competition": link.get("competition"),
             "home_team": link.get("home_team"), "away_team": link.get("away_team"),
