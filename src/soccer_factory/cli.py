@@ -33,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     parent_parser.add_argument("--confirm-live", action="store_true", help="Confirm live mode execution")
     parent_parser.add_argument("--max-previews", type=int, default=20, help="Maximum scheduled SoccerStats preview pages in a live collection (bounded by source request policy)")
     parent_parser.add_argument("--run-id", type=str, help="SoccerStats live collection run ID to validate; isolates that run from fixture files")
+    parent_parser.add_argument("--browser-fallback", action="store_true", help="Compare public SoccerStats index HTML with a browser-rendered response and retain the fuller page")
 
     subparsers.add_parser("collect", parents=[parent_parser])
     subparsers.add_parser("validate", parents=[parent_parser])
@@ -97,6 +98,7 @@ def do_collect(args: argparse.Namespace) -> None:
                 contact_email=contact_email,
                 parser_version=SoccerStatsParser().version,
                 max_previews=args.max_previews,
+                browser_fallback=args.browser_fallback,
             )
         except ValueError as exc:
             raise SystemExit(f"Error: {exc}") from None

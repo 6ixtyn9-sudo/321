@@ -10,6 +10,7 @@ from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 from ...schemas.snapshots import RawSnapshot
+from ..playwright_fallback import PlaywrightFallback
 from .collector import SoccerStatsCollector
 from .parser import SoccerStatsParser
 
@@ -69,7 +70,8 @@ def _snapshot(*, source: str, url: str, status: int, content: bytes, headers: di
 
 
 def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact_email: str,
-                         parser_version: str, max_previews: int = 20) -> list[RawSnapshot]:
+                         parser_version: str, max_previews: int = 20,
+                         browser_fallback: bool = False) -> list[RawSnapshot]: 
     """Collect one daily index and previews for its scheduled fixtures only.
 
     A result-analysis URL is never followed here.  That keeps completed-match
@@ -77,9 +79,10 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
     a hard bound below the source policy's 50-request run limit.
     """
     index_urls = daily_index_urls(target, today)
-    # The source collector has a hard 50-request limit. Reserve one request
-    # for every configured scope index.
-    max_allowed_previews = 50 - len(index_urls)
+    # The source collector has a hard 50-request limit. When enabled, a browser
+    # comparison can make one additional public request per index scope.
+    reserved_index_requests = len(index_urls) * (2 if browser_fallback else 1)
+    max_allowed_previews = 50 - reserved_index_requests
     if not 0 <= max_previews <= max_allowed_previews:
         raise ValueError(f"max_previews must be between 0 and {max_allowed_previews}")
     run_id = str(uuid.uuid4())
@@ -87,15 +90,36 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
     run_dir.mkdir(parents=True, exist_ok=False)
     collector = SoccerStatsCollector(contact_email)
     parser = SoccerStatsParser(version=parser_version)
+    user_agent = getattr(getattr(collector, "session", None), "headers", {}).get("User-Agent", "SoccerFactory/0.1")
+    browser = PlaywrightFallback(user_agent, enabled=browser_fallback)
+    coverage_checks: list[dict[str, object]] = []
     snapshots: list[RawSnapshot] = []
     scheduled_preview_urls: list[str] = []
     fixture_links: list[dict[str, object]] = []
 
     for ordinal, url in enumerate(index_urls, start=1):
         status, content, headers, error = collector.fetch(url)
-        snapshots.append(_snapshot(source="soccerstats", url=url, status=status, content=content,
+        http_count = len(parser.parse_matches(content, datetime.now(timezone.utc))) if content else 0
+        chosen_method = "requests_public_html"
+        browser_count = None
+        browser_error = None
+        if browser_fallback:
+            b_status, b_content, b_headers, b_error = browser.fetch(url)
+            browser_error = b_error
+            if b_content:
+                browser_count = len(parser.parse_matches(b_content, datetime.now(timezone.utc)))
+                # Keep the fuller public rendering; preserve the count decision in the run audit.
+                if browser_count > http_count:
+                    status, content, headers, error = b_status, b_content, b_headers, b_error
+                    chosen_method = "playwright_public_html"
+        coverage_checks.append({"url": url, "http_fixture_count": http_count,
+            "browser_fixture_count": browser_count, "browser_error": browser_error,
+            "selected_method": chosen_method})
+        snapshot = _snapshot(source="soccerstats", url=url, status=status, content=content,
             headers=headers, error=error, parser_version=parser_version, target=target, run_id=run_id,
-            run_dir=run_dir, file_stem=f"daily_index_{target.isoformat()}_{ordinal}"))
+            run_dir=run_dir, file_stem=f"daily_index_{target.isoformat()}_{ordinal}")
+        snapshot.extraction_method = chosen_method
+        snapshots.append(snapshot)
         if not content:
             continue
         observed_at = datetime.now(timezone.utc)
@@ -146,6 +170,8 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         "max_previews": max_previews,
         "fixtures_discovered": len(fixture_links),
         "fixture_links_file": "fixture_links.jsonl",
+        "browser_fallback_enabled": browser_fallback,
+        "coverage_checks": coverage_checks,
     }, indent=2), encoding="utf-8")
     return snapshots
 
