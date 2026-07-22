@@ -12,6 +12,7 @@ from urllib.parse import parse_qs, urlparse
 from ...schemas.snapshots import RawSnapshot
 from ..playwright_fallback import PlaywrightFallback
 from .collector import SoccerStatsCollector
+from .lifecycle import eligible_pre_match_snapshot, fixture_state
 from .parser import SoccerStatsParser
 
 BASE = "https://www.soccerstats.com/matches.asp"
@@ -133,6 +134,11 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
                 "home_team": match.home_team,
                 "away_team": match.away_team,
                 "status": match.status,
+                "observed_at_utc": observed_at.isoformat(),
+                "kickoff_utc": None,
+                "kickoff_confidence": "unverified_index_time",
+                "lifecycle_state": fixture_state(source_status=match.status, observed_at=observed_at, kickoff_utc=None, final_result_evidence=(match.status == "finished")),
+                "pre_match_eligible": False,
                 "scope": index_scope(url),
                 "index_url": url,
                 "detail_url": preview_url,
@@ -188,6 +194,16 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         link["preview_snapshot_id"] = snapshot.snapshot_id if snapshot else None
         link["preview_snapshot_path"] = snapshot.local_file_path if snapshot else None
         link["preview_collected"] = snapshot is not None and snapshot.validation_status == "fetched"
+        if snapshot and snapshot.local_file_path:
+            captured = datetime.now(timezone.utc)
+            kickoff = parser._preview_kickoff(Path(snapshot.local_file_path).read_bytes(), captured)
+            # _preview_kickoff returns its fallback when the explicit UTC header is absent.
+            if kickoff != captured and kickoff.tzinfo is not None:
+                link["kickoff_utc"] = kickoff.isoformat()
+                link["kickoff_confidence"] = "explicit_pmatch_utc"
+                state = fixture_state(source_status=str(link["status"]), observed_at=captured, kickoff_utc=kickoff)
+                link["lifecycle_state"] = state
+                link["pre_match_eligible"] = eligible_pre_match_snapshot(state=state, observed_at=captured, kickoff_utc=kickoff)
         link["result_snapshot_id"] = result_snapshot.snapshot_id if result_snapshot else None
         link["result_snapshot_path"] = result_snapshot.local_file_path if result_snapshot else None
         link["result_collected"] = result_snapshot is not None and result_snapshot.validation_status == "fetched"
