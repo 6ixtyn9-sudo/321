@@ -1,0 +1,38 @@
+{
+  "collection_run_id": "54fd04e3-7944-4e9f-a14b-3aa639709fde",
+  "target_date": "2026-07-23",
+  "index_pages": 3,
+  "scheduled_preview_urls_found": 24,
+  "scheduled_preview_urls_collected": 24,
+  "finished_result_urls_found": 0,
+  "finished_result_urls_collected": 0,
+  "alternate_detail_urls_found": 6,
+  "alternate_detail_urls_collected": 6,
+  "max_previews": 24,
+  "fixtures_discovered": 93,
+  "fixture_links_file": "fixture_links.jsonl",
+  "browser_fallback_enabled": true,
+  "coverage_checks": [
+    {
+      "url": "https://www.soccerstats.com/matches.asp?matchday=2&daym=tomorrow&matchdayn=1",
+      "http_fixture_count": 31,
+      "browser_fixture_count": 31,
+      "browser_error": null,
+      "selected_method": "requests_public_html"
+    },
+    {
+      "url": "https://www.soccerstats.com/matches.asp?matchday=102&matchdayn=1",
+      "http_fixture_count": 31,
+      "browser_fixture_count": 31,
+      "browser_error": null,
+      "selected_method": "requests_public_html"
+    },
+    {
+      "url": "https://www.soccerstats.com/matches.asp?matchday=202&matchdayn=1",
+      "http_fixture_count": 31,
+      "browser_fixture_count": 31,
+      "browser_error": null,
+      "selected_method": "requests_public_html"
+    }
+  ]
+}
