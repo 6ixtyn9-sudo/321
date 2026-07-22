@@ -390,10 +390,25 @@ def do_discover(args: argparse.Namespace) -> None:
 
     collector = HttpCollector(user_agent="321-discovery-bot", delay=cfg.request_delay_seconds, max_requests=cfg.max_total_requests) if getattr(args, 'mode', 'fixture') == "live" else None
     crawler = BoundedCrawler(config=cfg, collector=collector)
+    
+    if args.mode == "live":
+        print(f"--- LIVE AUDIT LIMITS ---")
+        print(f"max_total_requests: {cfg.max_total_requests}")
+        print(f"max_pages_per_source: {cfg.max_pages_per_source}")
+        print(f"max_pages_per_family: {cfg.max_pages_per_family}")
+        print(f"max_depth: {cfg.max_depth}")
+        print(f"request_delay_seconds: {cfg.request_delay_seconds}")
+        print(f"circuit_breaker_threshold: {cfg.circuit_breaker_threshold}")
+        print(f"-------------------------")
+
     print(f"Starting discovery for {args.source} in {args.mode} mode...")
     entries, manifest = crawler.crawl(args.source, seeds, mode=args.mode)
     
-    catalog_dir = "data/catalog_live_audit" if getattr(args, 'mode', 'fixture') == "live" else "data/catalog"
+    catalog_dir = "data/catalog_live_audit_v2" if getattr(args, 'mode', 'fixture') == "live" else "data/catalog"
+    if args.mode == "live":
+        manifest.audit_version = "v2"
+        manifest.previous_audit_path = "data/catalog_live_audit"
+
     store = CatalogStore(catalog_dir=catalog_dir)
     for e in entries:
         store.append(e)
