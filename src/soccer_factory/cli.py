@@ -178,6 +178,21 @@ def do_validate(args: argparse.Namespace) -> None:
                 feature_match_id = preview_match_ids.get(snapshot_key, relative_path)
                 features.extend(ss_parser.parse_features(content, feature_match_id, dt))
             
+    # One baseline feature record per fixture. Preview pages may enrich an
+    # index-derived record, but cannot create duplicate feature rows.
+    merged_features = {}
+    for feature in features:
+        existing = merged_features.get(feature.match_id)
+        if existing is None:
+            merged_features[feature.match_id] = feature
+            continue
+        combined = existing.model_dump()
+        for key, value in feature.model_dump().items():
+            if combined.get(key) is None and value is not None:
+                combined[key] = value
+        merged_features[feature.match_id] = Features.model_validate(combined)
+    features = list(merged_features.values())
+
     # Save valid parsed data to interim
     with open(os.path.join(DATA_INTERIM, "matches.json"), "w") as f:
         json.dump([m.model_dump(mode='json') for m in matches if m.status == "pre-match"], f)
