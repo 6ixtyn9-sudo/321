@@ -2,11 +2,13 @@ import argparse
 import sys
 import os
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 
 from src.soccer_factory.sources.soccerstats.parser import SoccerStatsParser
 from src.soccer_factory.sources.forebet.parser import ForebetParser
 from src.soccer_factory.sources.http_collector import HttpCollector
+from src.soccer_factory.sources.soccerstats.live import collect_daily_bundle
 from src.soccer_factory.identity.matcher import match_teams
 from src.soccer_factory.models.baseline import generate_predictions, generate_no_predictions
 from src.soccer_factory.schemas.features import Features
@@ -29,6 +31,8 @@ def parse_args() -> argparse.Namespace:
     parent_parser.add_argument("--as-of", type=str, help="Deterministic as-of timestamp (e.g. 2026-07-21T00:00:00Z)", required=False)
     parent_parser.add_argument("--mode", type=str, choices=["fixture", "live"], default="fixture", help="Run mode")
     parent_parser.add_argument("--confirm-live", action="store_true", help="Confirm live mode execution")
+    parent_parser.add_argument("--max-previews", type=int, default=20, help="Maximum scheduled SoccerStats preview pages in a live collection (bounded by source request policy)")
+    parent_parser.add_argument("--run-id", type=str, help="SoccerStats live collection run ID to validate; isolates that run from fixture files")
 
     subparsers.add_parser("collect", parents=[parent_parser])
     subparsers.add_parser("validate", parents=[parent_parser])
@@ -77,8 +81,34 @@ def do_collect(args: argparse.Namespace) -> None:
             json.dump(manifest, f)
         print("Collect complete (fixture mode). Zero external requests made.")
     else:
-        # Real HTTP collector logic would go here
-        print("Collect live not implemented fully.")
+        # This is intentionally bounded to public SoccerStats daily indexes. It
+        # snapshots raw HTML and metadata only; parsing/model work remains a
+        # separate, reproducible step.
+        from datetime import date
+        from zoneinfo import ZoneInfo
+        requested_date = date.fromisoformat(args.date) if args.date else datetime.now(ZoneInfo("Africa/Johannesburg")).date()
+        local_today = datetime.now(ZoneInfo("Africa/Johannesburg")).date()
+        contact_email = os.environ.get("CONTACT_EMAIL", "contact@example.com")
+        try:
+            snapshots = collect_daily_bundle(
+                target=requested_date,
+                today=local_today,
+                output_dir=Path(DATA_RAW),
+                contact_email=contact_email,
+                parser_version=SoccerStatsParser().version,
+                max_previews=args.max_previews,
+            )
+        except ValueError as exc:
+            raise SystemExit(f"Error: {exc}") from None
+        successful = sum(1 for s in snapshots if s.validation_status == "fetched")
+        manifest = {
+            "collected": successful, "requested": len(snapshots), "mode": "live",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source": "soccerstats", "target_date": requested_date.isoformat(),
+        }
+        with open(f"{DATA_RAW}/manifest.json", "w") as f:
+            json.dump(manifest, f)
+        print(f"Live SoccerStats collection complete. {successful}/{len(snapshots)} snapshots fetched.")
 
 def do_validate(args: argparse.Namespace) -> None:
     setup_dirs()
@@ -87,22 +117,59 @@ def do_validate(args: argparse.Namespace) -> None:
     dt = get_as_of(args)
     
     matches = []
+    seen_match_ids = set()
     obs = []
     features = []
-    
-    for file in os.listdir(DATA_RAW):
-        if not file.endswith(".html"):
+
+    # A run-scoped live validation must never mix old fixture-mode HTML or a
+    # different collection run with its raw snapshots.
+    scan_root = DATA_RAW
+    if getattr(args, "run_id", None):
+        run_id = args.run_id
+        if os.path.basename(run_id) != run_id or run_id in {".", ".."}:
+            raise SystemExit("Error: --run-id must be a single collection-run directory name.")
+        scan_root = os.path.join(DATA_RAW, "soccerstats", run_id)
+        if not os.path.isdir(scan_root):
+            raise SystemExit(f"Error: SoccerStats collection run not found: {run_id}")
+
+    # Read durable index-to-preview links before parsing preview snapshots.
+    # A preview feature is attached only through this source-produced linkage.
+    preview_match_ids = {}
+    for root, _dirs, names in os.walk(scan_root):
+        if "fixture_links.jsonl" not in names:
             continue
-        path = os.path.join(DATA_RAW, file)
-        with open(path, "rb") as f:
-            content = f.read()
-            
-        if "soccerstats_matches" in file:
-            matches.extend(ss_parser.parse_matches(content, dt))
-        elif "forebet" in file:
-            obs.extend(fb_parser.parse_predictions(content, dt))
-        elif "soccerstats_pmatch" in file:
-            features.extend(ss_parser.parse_features(content, file, dt))
+        with open(os.path.join(root, "fixture_links.jsonl"), encoding="utf-8") as links_file:
+            for line in links_file:
+                if not line.strip():
+                    continue
+                link = json.loads(line)
+                if link.get("status") == "pre-match" and link.get("preview_snapshot_path"):
+                    preview_match_ids[os.path.normpath(link["preview_snapshot_path"])] = link["match_id"]
+    
+    # Raw live snapshots are kept in source/run subdirectories; fixture mode
+    # keeps its HTML at the raw root.  Walk both layouts deterministically.
+    for root, _dirs, names in os.walk(scan_root):
+        for file in sorted(names):
+            if not file.endswith(".html"):
+                continue
+            path = os.path.join(root, file)
+            with open(path, "rb") as f:
+                content = f.read()
+            relative_path = os.path.relpath(path, DATA_RAW)
+
+            if "soccerstats_matches" in file or file.startswith("daily_index_"):
+                for match in ss_parser.parse_matches(content, dt):
+                    if match.match_id not in seen_match_ids:
+                        matches.append(match)
+                        seen_match_ids.add(match.match_id)
+            elif "forebet" in file:
+                obs.extend(fb_parser.parse_predictions(content, dt))
+            elif "soccerstats_pmatch" in file or file.startswith("pmatch_preview_"):
+                # Live snapshots must use the fixture-link manifest. Legacy
+                # fixture-mode files have no manifest and retain their path ID.
+                snapshot_key = os.path.normpath(path)
+                feature_match_id = preview_match_ids.get(snapshot_key, relative_path)
+                features.extend(ss_parser.parse_features(content, feature_match_id, dt))
             
     # Save valid parsed data to interim
     with open(os.path.join(DATA_INTERIM, "matches.json"), "w") as f:
@@ -114,7 +181,8 @@ def do_validate(args: argparse.Namespace) -> None:
     with open(os.path.join(DATA_INTERIM, "features.json"), "w") as f:
         json.dump([f.model_dump(mode='json') for f in features], f)
 
-    manifest = {"matches_parsed": len(matches), "obs_parsed": len(obs), "features_parsed": len(features)}
+    manifest = {"matches_parsed": len(matches), "obs_parsed": len(obs), "features_parsed": len(features),
+                "validation_scope": getattr(args, "run_id", None) or "all_raw"}
     with open(f"{DATA_INTERIM}/manifest.json", "w") as f:
         json.dump(manifest, f)
     print(f"Validate complete. {manifest}")
