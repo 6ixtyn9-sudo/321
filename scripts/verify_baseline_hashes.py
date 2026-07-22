@@ -14,7 +14,7 @@ def canonical_hash(filepath):
     def _clean(obj):
         if isinstance(obj, dict):
             # Remove unstable keys
-            for k in ["run_id", "created_at", "updated_at", "generated_at", "fetched_at", "git_commit"]:
+            for k in ["run_id", "created_at", "updated_at", "generated_at", "fetched_at", "git_commit", "prediction_id", "match_id", "feature_cutoff", "snapshot_id"]:
                 obj.pop(k, None)
             
             # Recursively clean and sort keys
