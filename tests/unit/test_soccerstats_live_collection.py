@@ -7,19 +7,25 @@ from src.soccer_factory.sources.soccerstats.live import daily_index_urls, collec
 
 
 def test_daily_index_routes_are_explicit_and_bounded():
+    """Patched: now includes all 3 scopes for yesterday and by-time full views for today to bypass 10-match limit."""
     today = date(2026, 7, 22)
     assert daily_index_urls(today - timedelta(days=1), today) == [
-        "https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1"
+        "https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=100&daym=yesterday&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=200&daym=yesterday&matchdayn=1",
     ]
     assert daily_index_urls(today, today) == [
         "https://www.soccerstats.com/matches.asp?matchday=1&matchdayn=1",
         "https://www.soccerstats.com/matches.asp?matchday=101&matchdayn=1",
         "https://www.soccerstats.com/matches.asp?matchday=201&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=6&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=106&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=206&matchdayn=1",
     ]
     assert daily_index_urls(today + timedelta(days=1), today) == [
         "https://www.soccerstats.com/matches.asp?matchday=2&daym=tomorrow&matchdayn=1",
-        "https://www.soccerstats.com/matches.asp?matchday=102&matchdayn=1",
-        "https://www.soccerstats.com/matches.asp?matchday=202&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=102&daym=tomorrow&matchdayn=1",
+        "https://www.soccerstats.com/matches.asp?matchday=202&daym=tomorrow&matchdayn=1",
     ]
 
 
