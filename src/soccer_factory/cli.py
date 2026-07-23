@@ -54,6 +54,10 @@ def parse_args() -> argparse.Namespace:
     discover_parser = subparsers.add_parser("discover", parents=[parent_parser])
     discover_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
 
+    audit_parser = subparsers.add_parser("lifecycle-audit", parents=[parent_parser])
+    audit_parser.add_argument("--pre-run-id", type=str, required=True, help="Pre-match collection run ID")
+    audit_parser.add_argument("--current-run-id", type=str, required=True, help="Current collection run ID")
+
     catalog_parser = subparsers.add_parser("catalog", parents=[parent_parser])
     catalog_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
 
@@ -585,6 +589,17 @@ def do_discover(args: argparse.Namespace) -> None:
     
     print(f"Discovery complete. Fetched {manifest.pages_fetched} pages. Reason: {manifest.stop_reason}")
 
+def do_lifecycle_audit(args: argparse.Namespace) -> None:
+    from src.soccer_factory.reconciliation import reconcile_cross_day
+    pre_run_dir = Path(DATA_RAW) / "soccerstats" / args.pre_run_id
+    current_run_dir = Path(DATA_RAW) / "soccerstats" / args.current_run_id
+    if not pre_run_dir.exists() or not current_run_dir.exists():
+        raise SystemExit(f"Error: Pre or current run directory not found.")
+    audit_path = Path(DATA_REPORTS) / f"soccerstats_lifecycle_audit_{args.pre_run_id}_{args.current_run_id}.json"
+    result = reconcile_cross_day(pre_run_dir, current_run_dir, audit_path)
+    print(f"Lifecycle audit complete. Report: {audit_path}")
+    print(f"Reconciled: {len(result['reconciled'])}, Ambiguous: {len(result['ambiguous'])}, Unresolved: {len(result['unresolved'])}")
+
 def do_catalog(args: argparse.Namespace) -> None:
     from src.soccer_factory.discovery.catalog import CatalogStore
     # We default to fixture for catalog read unless specified otherwise? The user wants them separate.
@@ -626,6 +641,8 @@ def main() -> None:
         do_smoke_test(args)
     elif args.command == "discover":
         do_discover(args)
+    elif args.command == "lifecycle-audit":
+        do_lifecycle_audit(args)
     elif args.command == "catalog":
         do_catalog(args)
     elif args.command == "run-daily":
