@@ -9,6 +9,8 @@ import uuid
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
+from bs4 import BeautifulSoup
+
 from ...schemas.snapshots import RawSnapshot
 from ..playwright_fallback import PlaywrightFallback
 from .collector import SoccerStatsCollector
@@ -196,7 +198,8 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         link["preview_collected"] = snapshot is not None and snapshot.validation_status == "fetched"
         if snapshot and snapshot.local_file_path:
             captured = datetime.now(timezone.utc)
-            kickoff = parser._preview_kickoff(Path(snapshot.local_file_path).read_bytes(), captured)
+            preview_soup = BeautifulSoup(Path(snapshot.local_file_path).read_bytes(), "lxml")
+            kickoff = parser._preview_kickoff(preview_soup, captured)
             # _preview_kickoff returns its fallback when the explicit UTC header is absent.
             if kickoff != captured and kickoff.tzinfo is not None:
                 link["kickoff_utc"] = kickoff.isoformat()
