@@ -2,13 +2,42 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Optional
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from bs4 import BeautifulSoup
 
 
 def _text(node: Any) -> str:
     return " ".join(node.get_text(" ", strip=True).split())
+
+
+class Grading(BaseModel):
+    model_config = ConfigDict(strict=True)
+    prediction_id: str
+    match_id: str
+    correct: Optional[bool] = None
+    actual_outcome: Optional[str] = None
+    final_score: Optional[str] = None
+    total_goals: Optional[int] = None
+    btts_result: Optional[bool] = None
+    graded_at: datetime
+    grading_source: str
+    unresolved_status: Optional[str] = None
+
+
+class Result(BaseModel):
+    model_config = ConfigDict(strict=True)
+    match_id: str
+    status: str = "unknown"
+    home_score: Optional[int] = Field(default=None, ge=0)
+    away_score: Optional[int] = Field(default=None, ge=0)
+    match_outcome: Optional[str] = Field(default=None)
+    total_goals: Optional[int] = Field(default=None, ge=0)
+    btts_result: Optional[bool] = Field(default=None)
+    over_25_result: Optional[bool] = Field(default=None)
 
 
 def extract_result_detail(content: bytes) -> dict[str, Any]:

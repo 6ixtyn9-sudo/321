@@ -409,5 +409,25 @@ class SoccerStatsParser(BaseParser):
             ))
         return features
 
+    def detect_pmatch_state(self, content: bytes) -> str:
+        """Detect actual pmatch page state from content: pre_match, live, finished_post_match."""
+        text = content.decode('utf-8', errors='ignore').lower()
+        # Explicit post-match markers
+        if 'full-time' in text or 'ft' in text and 'final' in text:
+            return 'finished_post_match'
+        # Score pair with finished markers
+        if re.search(r'final score[:\s]*\d+[-:]\d+', text):
+            return 'finished_post_match'
+        # Live markers - must be more specific to avoid false positives
+        if ('ht ' in text or 'ht:' in text or 'in play' in text or 'live score' in text) and 'pre-match' not in text:
+            return 'live'
+        # If there's a time marker with pre-match label
+        if re.search(r'\d{1,2}[\':]\d{2}', text) and ('pre-match' in text or 'scheduled' in text):
+            return 'pre_match'
+        # Default: check if it has preview stats table (pre-match) or explicit pre-match text
+        if 'pre-match' in text or 'points per game' in text or 'scoring home away all' in text:
+            return 'pre_match'
+        return 'unknown'
+
     def parse_predictions(self, content: bytes, collected_at: datetime) -> list[object]:
         return []

@@ -117,11 +117,16 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
                 if browser_count > http_count:
                     status, content, headers, error = b_status, b_content, b_headers, b_error
                     chosen_method = "playwright_public_html"
-        coverage_checks.append({"url": url, "http_fixture_count": http_count,
+        coverage_checks.append({
+            "url": url, "http_fixture_count": http_count,
             "browser_fixture_count": browser_count, "browser_error": browser_error,
-            "selected_method": chosen_method,
+            "expanded_fixture_count": browser_count if browser_fallback and browser_count else None,
             "collapsed_league_control_present": bool(content and b"Show all matches" in content),
-            "coverage_status": "requires_expansion_audit" if content and b"Show all matches" in content else "observed"})
+            "expansion_attempted": browser_fallback,
+            "expansion_succeeded": bool(browser_fallback and b_content and (browser_count is not None and browser_count >= http_count)),
+            "selected_method": chosen_method,
+            "coverage_status": "requires_expansion_audit" if content and b"Show all matches" in content else ("expanded" if browser_fallback and browser_count and browser_count > http_count else "observed")
+        })
         snapshot = _snapshot(source="soccerstats", url=url, status=status, content=content,
             headers=headers, error=error, parser_version=parser_version, target=target, run_id=run_id,
             run_dir=run_dir, file_stem=f"daily_index_{target.isoformat()}_{ordinal}")
