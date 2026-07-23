@@ -1,17 +1,17 @@
-# discovery_config.toml
+# discovery_config.toml - RED-TEAM HARDENED CONFIG
 # Configuration for bounded page-family discovery.
 
 [defaults]
-max_depth = 1
-max_pages_per_source = 30
-max_pages_per_family = 5
-max_requests_per_minute = 60
-max_total_requests = 25
+max_depth = 2
+max_pages_per_source = 200
+max_pages_per_family = 20
+max_requests_per_minute = 20
+max_total_requests = 200
 max_response_bytes = 2097152      # 2 MB
 request_timeout_seconds = 15.0
-request_delay_seconds = 3.0
+request_delay_seconds = 3.5
 parallelism = 1
-circuit_breaker_threshold = 3
+circuit_breaker_threshold = 10
 robots_unavailable_blocks = true  # safe-block default
 record_external_links = false
 
@@ -24,8 +24,17 @@ base_url = "https://www.forebet.com"
 [fixtures.soccerstats]
 "https://www.soccerstats.com/matches.asp" = "soccerstats/matches_today.html"
 "https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1" = "soccerstats/matches_yesterday.html"
+"https://www.soccerstats.com/matches.asp?matchday=100&daym=yesterday&matchdayn=1" = "soccerstats/matches_yesterday.html"
+"https://www.soccerstats.com/matches.asp?matchday=200&daym=yesterday&matchdayn=1" = "soccerstats/matches_yesterday.html"
 "https://www.soccerstats.com/matches.asp?matchday=1&matchdayn=1" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=101&matchdayn=1" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=201&matchdayn=1" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=6&matchdayn=1" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=106&matchdayn=1" = "soccerstats/matches_today.html"
+"https://www.soccerstats.com/matches.asp?matchday=206&matchdayn=1" = "soccerstats/matches_today.html"
 "https://www.soccerstats.com/matches.asp?matchday=2&daym=tomorrow&matchdayn=1" = "soccerstats/matches_tomorrow.html"
+"https://www.soccerstats.com/matches.asp?matchday=102&daym=tomorrow&matchdayn=1" = "soccerstats/matches_tomorrow.html"
+"https://www.soccerstats.com/matches.asp?matchday=202&daym=tomorrow&matchdayn=1" = "soccerstats/matches_tomorrow.html"
 "https://www.soccerstats.com/leagues.asp" = "soccerstats/leagues.html"
 "https://www.soccerstats.com/stats.asp" = "soccerstats/stats_page1.html"
 "https://www.soccerstats.com/faq.asp" = "soccerstats/faq.html"
@@ -41,6 +50,8 @@ base_url = "https://www.forebet.com"
 "https://www.soccerstats.com/latest.asp" = "soccerstats/latest.html"
 "https://www.soccerstats.com/pmatch.asp" = "soccerstats/pmatch.html"
 "https://www.soccerstats.com/leagueview.asp" = "soccerstats/leagueview.html"
+"https://www.soccerstats.com/results.asp" = "soccerstats/results.html"
+"https://www.soccerstats.com/matchlist.asp" = "soccerstats/match_list.html"
 
 [fixtures.forebet]
 "https://www.forebet.com/en/football-tips-and-predictions-for-today" = "forebet/daily_predictions.html"
@@ -58,38 +69,117 @@ base_url = "https://www.forebet.com"
 "https://www.forebet.com/en/team-comparison" = "forebet/team_comparison.html"
 "https://www.forebet.com/en/teams/some-team" = "forebet/team_page.html"
 "https://www.forebet.com/en/prediction-lists" = "forebet/prediction_list.html"
+"https://www.forebet.com/en/teams/1192-botafogo-rj" = "forebet/team_page.html"
 
 [seeds.soccerstats]
 urls = [
     "https://www.soccerstats.com/matches.asp",
+    "https://www.soccerstats.com/matches.asp?matchday=0&daym=yesterday&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=100&daym=yesterday&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=200&daym=yesterday&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=1&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=101&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=201&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=6&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=106&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=206&matchdayn=1",
     "https://www.soccerstats.com/matches.asp?matchday=2&daym=tomorrow&matchdayn=1",
-    "https://www.soccerstats.com/round_details.asp",
-    "https://www.soccerstats.com/round_details.asp?league=ecuador&mrevid=m160&st1=13&st2=16",
-    "https://www.soccerstats.com/latest.asp",
-    "https://www.soccerstats.com/leagueview.asp",
-    "https://www.soccerstats.com/leagueview_team.asp",
-    "https://www.soccerstats.com/pmatch.asp",
+    "https://www.soccerstats.com/matches.asp?matchday=102&daym=tomorrow&matchdayn=1",
+    "https://www.soccerstats.com/matches.asp?matchday=202&daym=tomorrow&matchdayn=1",
+    "https://www.soccerstats.com/leagues.asp",
     "https://www.soccerstats.com/stats.asp",
     "https://www.soccerstats.com/stats.asp?page=10",
-    "https://www.soccerstats.com/homeaway.asp",
-    "https://www.soccerstats.com/formtable.asp",
-    "https://www.soccerstats.com/table.asp",
-    "https://www.soccerstats.com/table.asp?type=projected",
-    "https://www.soccerstats.com/trends.asp",
-    "https://www.soccerstats.com/teamstats.asp"
+    "https://www.soccerstats.com/faq.asp",
+    "https://www.soccerstats.com/latest.asp?league=brazil",
+    "https://www.soccerstats.com/latest.asp?league=england",
+    "https://www.soccerstats.com/leagueview.asp?league=brazil",
+    "https://www.soccerstats.com/leagueview_team.asp?league=brazil&team1id=1&team2id=2&fmid=1",
+    "https://www.soccerstats.com/homeaway.asp?league=brazil",
+    "https://www.soccerstats.com/formtable.asp?league=brazil",
+    "https://www.soccerstats.com/widetable.asp?league=brazil",
+    "https://www.soccerstats.com/statsbymonth.asp?league=brazil",
+    "https://www.soccerstats.com/trends.asp?league=brazil",
+    "https://www.soccerstats.com/trends.asp?league=brazil&tid=over_under",
+    "https://www.soccerstats.com/table.asp?league=brazil",
+    "https://www.soccerstats.com/results.asp?league=brazil",
+    "https://www.soccerstats.com/matchlist.asp?league=brazil",
+    "https://www.soccerstats.com/pmatch.asp?league=brazil&stats=32-19-1-2026",
+    "https://www.soccerstats.com/round_details.asp?league=ecuador&mrevid=m160&st1=13&st2=16",
+    "https://www.soccerstats.com/round_details.asp?league=brazil&mrevid=m181&st1=11&st2=16",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=p",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=y",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=g",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=z",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=e",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=d",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=ha",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=s8",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=pp",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=rp",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=re",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=2p",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=v",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=10",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=c",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=8",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=9",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=f",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=j",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=k",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=t",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=h",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=u",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=x",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=w",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=pa",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=sc",
+    "https://www.soccerstats.com/firstgoal.asp?league=brazil",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=sc",
+    "https://www.soccerstats.com/table.asp?league=brazil&tid=h",
+    "https://www.soccerstats.com/teamstats.asp?league=brazil",
+    "https://www.soccerstats.com/teamstats.asp?league=brazil&stats=u2653-botafogo",
 ]
 
 [seeds.forebet]
 urls = [
     "https://www.forebet.com/en/football-tips-and-predictions-for-today",
+    "https://www.forebet.com/en/football-tips-and-predictions-for-tomorrow",
+    "https://www.forebet.com/en/football-tips-and-predictions-for-the-weekend",
+    "https://www.forebet.com/en/football-predictions-from-yesterday",
+    "https://www.forebet.com/en/live-football-tips",
+    "https://www.forebet.com/en/livescore",
     "https://www.forebet.com/en/football-match-previews",
+    "https://www.forebet.com/en/football-match-previews/28554-atletico-mineiro-seek-home-edge-against-bahia-in-tricky-brasileiro-serie-a-clash",
+    "https://www.forebet.com/en/football/matches/atletico-mineiro-bahia-2418076",
+    "https://www.forebet.com/en/teams/1192-botafogo-rj",
+    "https://www.forebet.com/en/teams/some-team",
     "https://www.forebet.com/en/trends",
     "https://www.forebet.com/en/trends/top",
-    "https://www.forebet.com/en/livescore",
     "https://www.forebet.com/en/injured-players",
     "https://www.forebet.com/en/team-comparison",
     "https://www.forebet.com/en/prediction-lists",
-    "https://www.forebet.com/en/football/matches/atletico-mineiro-bahia-2418076",
-    "https://www.forebet.com/en/football-match-previews/28554-atletico-mineiro-seek-home-edge-against-bahia-in-tricky-brasileiro-serie-a-clash",
-    "https://www.forebet.com/en/teams/some-team"
+    "https://www.forebet.com/en/prediction-lists/over-under",
+    "https://www.forebet.com/en/prediction-lists/btts",
+    "https://www.forebet.com/en/prediction-lists/double-chance",
+    "https://www.forebet.com/en/prediction-lists/asian-handicap",
+    "https://www.forebet.com/en/prediction-lists/corners",
+    "https://www.forebet.com/en/prediction-lists/cards",
+    "https://www.forebet.com/en/prediction-lists/goalscorers",
+    "https://www.forebet.com/en/football-predictions/brazil/serie-a",
+    "https://www.forebet.com/en/football-predictions/england/premier-league",
+    "https://www.forebet.com/en/football-predictions/spain/la-liga",
+    "https://www.forebet.com/en/football-predictions/germany/bundesliga",
+    "https://www.forebet.com/en/football-predictions/1x2",
+    "https://www.forebet.com/en/football-predictions/over-under-25",
+    "https://www.forebet.com/en/football-predictions/over-under-15",
+    "https://www.forebet.com/en/football-predictions/over-under-35",
+    "https://www.forebet.com/en/football-predictions/both-teams-to-score",
+    "https://www.forebet.com/en/football-predictions/double-chance",
+    "https://www.forebet.com/en/football-predictions/asian-handicap",
+    "https://www.forebet.com/en/football-predictions/corners",
+    "https://www.forebet.com/en/football-predictions/cards",
+    "https://www.forebet.com/en/football-predictions/goalscorers",
+    "https://www.forebet.com/en/football-predictions/half-time",
+    "https://www.forebet.com/en/football-predictions/half-time-full-time",
 ]
+

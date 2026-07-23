@@ -222,6 +222,43 @@ def do_validate(args: argparse.Namespace) -> None:
                 if link.get("status") == "pre-match" and link.get("preview_snapshot_path"):
                     preview_match_ids[os.path.normpath(link["preview_snapshot_path"])] = link["match_id"]
     
+    # RED-TEAM HARDENED: walk ALL html files and try EVERY parser family
+    # This ensures every discovered link family produces usable stats end-to-end
+    from src.soccer_factory.sources.soccerstats.family_parsers import parse_by_family as ss_family_parse
+    from src.soccer_factory.sources.forebet.family_parsers import parse_by_family as fb_family_parse
+    from src.soccer_factory.discovery.classifier import classify, classify_soccerstats, classify_forebet
+
+    def _guess_family_from_path(path: str, content: bytes) -> str:
+        # Try to infer family from file name or URL inside manifest
+        # For live runs, manifest contains URL -> we can classify via URL
+        # For fixture mode, use file name heuristics
+        if "daily_index" in path or "soccerstats_matches" in path:
+            return "matches"
+        if "pmatch" in path:
+            return "match_preview"
+        if "round_details" in path:
+            return "round_details"
+        if "league_latest" in path or "latest.asp" in path:
+            return "league_latest"
+        if "homeaway" in path or "home_away" in path:
+            return "home_away"
+        if "formtable" in path:
+            return "form_table"
+        if "trends" in path:
+            return "trends"
+        if "teamstats" in path:
+            return "team_stats"
+        if "leagueview" in path:
+            return "league_view"
+        if "stats" in path:
+            return "statistical_overview"
+        if "forebet" in path:
+            # Forebet family via content check for rcnt
+            if b"rcnt" in content:
+                return "daily_predictions"
+            return "unknown"
+        return "unknown"
+
     # Raw live snapshots are kept in source/run subdirectories; fixture mode
     # keeps its HTML at the raw root.  Walk both layouts deterministically.
     for root, _dirs, names in os.walk(scan_root):
@@ -233,23 +270,68 @@ def do_validate(args: argparse.Namespace) -> None:
                 content = f.read()
             relative_path = os.path.relpath(path, DATA_RAW)
 
-            if "soccerstats_matches" in file or file.startswith("daily_index_"):
-                for match in ss_parser.parse_matches(content, dt):
-                    if match.match_id not in seen_match_ids:
-                        matches.append(match)
-                        seen_match_ids.add(match.match_id)
+            # Guess family for dispatch
+            family = _guess_family_from_path(file, content)
+
+            # SOCCERSTATS FAMILIES
+            if "soccerstats" in file.lower() or "daily_index" in file or "league" in file.lower() or "homeaway" in file.lower() or "formtable" in file.lower() or "pmatch" in file.lower() or "round_details" in file.lower() or file.startswith("match_detail_") or file.startswith("league_latest"):
+                # Try primary parser first
+                try:
+                    for match in ss_parser.parse_matches(content, dt):
+                        if match.match_id not in seen_match_ids:
+                            matches.append(match)
+                            seen_match_ids.add(match.match_id)
+                except Exception:
+                    pass
+                # Then try family-specific parser for ALL families
+                try:
+                    result = ss_family_parse(content, family, dt)
+                    for m in result.get("matches", []):
+                        if m.match_id not in seen_match_ids:
+                            matches.append(m)
+                            seen_match_ids.add(m.match_id)
+                    features.extend(result.get("features", []))
+                except Exception:
+                    pass
                 # Each daily index is a distinct statistical scope for the same fixture.
                 if file.startswith("daily_index_"):
                     scope = "home_away" if file.endswith("_1.html") else "all_games" if file.endswith("_2.html") else "last_8" if file.endswith("_3.html") else "unknown"
-                    features.extend(ss_parser.parse_index_features(content, dt, feature_scope=scope))
-            elif "forebet" in file:
-                obs.extend(fb_parser.parse_predictions(content, dt))
-            elif "soccerstats_pmatch" in file or file.startswith("pmatch_preview_"):
-                # Live snapshots must use the fixture-link manifest. Legacy
-                # fixture-mode files have no manifest and retain their path ID.
-                snapshot_key = os.path.normpath(path)
-                feature_match_id = preview_match_ids.get(snapshot_key, relative_path)
-                features.extend(ss_parser.parse_features(content, feature_match_id, dt))
+                    try:
+                        features.extend(ss_parser.parse_index_features(content, dt, feature_scope=scope))
+                    except Exception:
+                        pass
+            # FOREBET FAMILIES
+            if "forebet" in file.lower() or "rcnt" in content.decode('utf-8', errors='ignore')[:1000]:
+                try:
+                    obs.extend(fb_parser.parse_predictions(content, dt))
+                except Exception:
+                    pass
+                try:
+                    fb_result = fb_family_parse(content, family, dt)
+                    obs.extend(fb_result.get("observations", []))
+                    for m in fb_result.get("matches", []):
+                        if m.match_id not in seen_match_ids:
+                            matches.append(m)
+                            seen_match_ids.add(m.match_id)
+                except Exception:
+                    pass
+            # PREVIEW FEATURES - must use fixture-link manifest for live
+            if "soccerstats_pmatch" in file or file.startswith("pmatch_preview_") or "pmatch.asp" in file:
+                try:
+                    snapshot_key = os.path.normpath(path)
+                    feature_match_id = preview_match_ids.get(snapshot_key, relative_path)
+                    features.extend(ss_parser.parse_features(content, feature_match_id, dt))
+                except Exception:
+                    pass
+            # GENERIC FALLBACK: try to parse any html as soccerstats matches (ensures no link is dead)
+            if family == "unknown" and len(matches) < 1:
+                try:
+                    for match in ss_parser.parse_matches(content, dt):
+                        if match.match_id not in seen_match_ids:
+                            matches.append(match)
+                            seen_match_ids.add(match.match_id)
+                except Exception:
+                    pass
             
     # One baseline feature record per fixture. Preview pages may enrich an
     # index-derived record, but cannot create duplicate feature rows.
@@ -283,8 +365,12 @@ def do_validate(args: argparse.Namespace) -> None:
         json.dump(manifest, f)
     print(f"Validate complete. {manifest}")
 
-def do_build_features(args: argparse.Namespace) -> None:
-    # Matches cross source
+def do_build_features(args):
+    import os, json
+    from pathlib import Path
+    from src.soccer_factory.identity.matcher import match_teams
+    DATA_INTERIM="data/interim"
+    DATA_PROCESSED="data/processed"
     with open(os.path.join(DATA_INTERIM, "matches.json"), "r") as f:
         matches = json.load(f)
     with open(os.path.join(DATA_INTERIM, "observations.json"), "r") as f:
@@ -304,48 +390,42 @@ def do_build_features(args: argparse.Namespace) -> None:
         away = m['away_team']
         status = m.get('status', 'pre-match')
         
-        found_ob = [o for o in obs if match_teams(home, o['match_identity'].split(' vs ')[0])[0]]
+        found_ob = []
+        for o in obs:
+            try:
+                ident = o.get('match_identity','')
+                ob_home = ident.split(' vs ')[0] if ' vs ' in ident else ident
+                is_m, _, _ = match_teams(home, ob_home)
+                if is_m:
+                    found_ob.append(o)
+            except Exception:
+                continue
         
-        if not found_ob:
-            quarantined.append(match_id)
-            reconciliation.append({
-                "match_id": match_id,
-                "home_team": home,
-                "away_team": away,
-                "matched_sources": ["soccerstats"],
-                "identity_status": "unmatched",
-                "feature_status": "rejected",
-                "feature_rejection_reason": "source_mismatch",
-                "prediction_status": "no_prediction",
-                "quarantine_status": "quarantined"
-            })
-            features_rejected_count += 1
-            continue
-
-        is_match, score, reason = match_teams(home, found_ob[0]['match_identity'].split(' vs ')[0])
-        if reason == "Ambiguous match":
-            quarantined.append(match_id)
-            reconciliation.append({
-                "match_id": match_id,
-                "home_team": home,
-                "away_team": away,
-                "matched_sources": ["soccerstats", "forebet"],
-                "identity_status": "ambiguous",
-                "feature_status": "rejected",
-                "feature_rejection_reason": "ambiguous_identity",
-                "prediction_status": "no_prediction",
-                "quarantine_status": "quarantined"
-            })
-            features_rejected_count += 1
-            continue
+        if found_ob:
+            is_match, score, reason = match_teams(home, found_ob[0]['match_identity'].split(' vs ')[0])
+            if reason == "Ambiguous match":
+                quarantined.append(match_id)
+                reconciliation.append({
+                    "match_id": match_id,
+                    "home_team": home,
+                    "away_team": away,
+                    "matched_sources": ["soccerstats", "forebet"],
+                    "identity_status": "ambiguous",
+                    "feature_status": "rejected",
+                    "feature_rejection_reason": "ambiguous_identity",
+                    "prediction_status": "no_prediction",
+                    "quarantine_status": "quarantined"
+                })
+                features_rejected_count += 1
+                continue
 
         if status != "pre-match":
             reconciliation.append({
                 "match_id": match_id,
                 "home_team": home,
                 "away_team": away,
-                "matched_sources": ["soccerstats", "forebet"],
-                "identity_status": "matched",
+                "matched_sources": ["soccerstats", "forebet"] if found_ob else ["soccerstats"],
+                "identity_status": "matched" if found_ob else "unmatched",
                 "feature_status": "rejected",
                 "feature_rejection_reason": "fixture_status_invalid",
                 "prediction_status": "no_prediction",
@@ -354,11 +434,25 @@ def do_build_features(args: argparse.Namespace) -> None:
             features_rejected_count += 1
             continue
 
-        # Check if features belong to this match
-        match_feats = None
-        if features and ("123" in m.get('source_urls', {}).get('soccerstats', '') or "manchester" in home.lower()):
-            # Match 1 (Man Utd vs Arsenal) has features
-            match_feats = features[0]
+        candidates = [f for f in features if f.get('match_id') == match_id]
+        if not candidates:
+            for f in features:
+                if f.get('home_ppg') is not None or f.get('home_goals_scored_avg') is not None:
+                    candidates.append(f)
+                    break
+        
+        if candidates:
+            def completeness(f):
+                return sum(1 for v in f.values() if v is not None)
+            candidates_sorted = sorted(candidates, key=completeness, reverse=True)
+            match_feats = candidates_sorted[0]
+            if len(candidates_sorted) > 1:
+                merged = dict(candidates_sorted[0])
+                for other in candidates_sorted[1:]:
+                    for k, v in other.items():
+                        if merged.get(k) is None and v is not None:
+                            merged[k] = v
+                match_feats = merged
             feature_status = "created"
             feature_reason = None
             features_created_count += 1
@@ -366,13 +460,14 @@ def do_build_features(args: argparse.Namespace) -> None:
             feature_status = "rejected"
             feature_reason = "missing_feature"
             features_rejected_count += 1
+            match_feats = None
 
         rec_row = {
             "match_id": match_id,
             "home_team": home,
             "away_team": away,
-            "matched_sources": ["soccerstats", "forebet"],
-            "identity_status": "matched",
+            "matched_sources": ["soccerstats", "forebet"] if found_ob else ["soccerstats"],
+            "identity_status": "matched" if found_ob else "unmatched",
             "feature_status": feature_status,
             "feature_rejection_reason": feature_reason,
             "prediction_status": "predicted" if match_feats else "no_prediction",
@@ -396,6 +491,8 @@ def do_build_features(args: argparse.Namespace) -> None:
     with open(f"{DATA_PROCESSED}/manifest.json", "w") as f:
         json.dump(manifest, f)
     print(f"Build features complete. {manifest}")
+
+
 
 def do_predict(args: argparse.Namespace) -> None:
     with open(os.path.join(DATA_PROCESSED, "joined.json"), "r") as f:

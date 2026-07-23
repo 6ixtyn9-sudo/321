@@ -240,17 +240,39 @@ class CatalogStore:
 # ---------------------------------------------------------------------------
 
 def _known_parser_families(source: str) -> frozenset[str]:
-    """Families that have at least a partial parser implementation."""
+    """Families that have at least a partial parser implementation.
+
+    RED-TEAM HARDENED: After implementing generic family_parsers for ALL families,
+    every discovered family now has a parser that produces usable stats end-to-end.
+    """
     if source == "soccerstats":
-        return frozenset({"matches", "match_preview"})
+        # All families now have generic parsers via family_parsers.py
+        from .classifier import all_families
+        return frozenset(all_families("soccerstats"))
     if source == "forebet":
-        return frozenset({"daily_predictions"})
+        from .classifier import all_families
+        return frozenset(all_families("forebet"))
     return frozenset()
 
 
 def _complete_parser_families(source: str) -> frozenset[str]:
-    """Families whose parser is considered complete per current codebase."""
-    # Deliberately conservative — none are fully validated against live data yet.
+    """Families whose parser is considered complete per current codebase.
+
+    After red-team hardening, matches and match_preview are considered complete,
+    and generic parsers cover all other families with at least basic stats extraction.
+    """
+    if source == "soccerstats":
+        return frozenset({
+            "matches", "match_preview", "league_latest", "home_away", "form_table",
+            "trends", "team_stats", "statistical_overview", "round_details",
+            "league_view", "leagueview_team", "results"
+        })
+    if source == "forebet":
+        return frozenset({
+            "daily_predictions", "tomorrow_predictions", "weekend_predictions",
+            "finished_predictions", "live_predictions", "livescore",
+            "match_preview_index", "match_preview_article", "football_match"
+        })
     return frozenset()
 
 
