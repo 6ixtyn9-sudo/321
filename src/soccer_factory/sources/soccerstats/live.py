@@ -505,9 +505,6 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         "".join(s.model_dump_json() + "\n" for s in all_snapshots), encoding="utf-8"
     )
 
-    # Merge league snapshots into manifest as well for audit
-    all_snapshots = snapshots + league_snapshots
-
     (run_dir / "run_summary.json").write_text(json.dumps({
         "collection_run_id": run_id,
         "target_date": target.isoformat(),
