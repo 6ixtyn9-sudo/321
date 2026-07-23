@@ -60,9 +60,11 @@ class SoccerStatsParser(BaseParser):
         timezone_name: str = "source-unverified",
     ) -> Match:
         country = competition.split(" - ", 1)[0] if " - " in competition else "Unknown"
+        # Stable canonical: exclude raw time_text which varies between grouped (23:30) and by-time (Thu 23 Jul 23:30)
+        # Use only date + normalized teams + competition
         canonical = "|".join((
             "match:soccerstats", self._competition_key(competition), kickoff.date().isoformat(),
-            time_text, self._normalise(home), self._normalise(away),
+            self._normalise(home), self._normalise(away),
         ))
         return Match(
             match_id=str(uuid.uuid5(uuid.NAMESPACE_URL, canonical)),

@@ -320,7 +320,7 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         chosen_method = "requests_public_html"
         browser_count = None
         browser_error = None
-        is_truncated = bool(content and b"MAXIMUM OF 10 MATCHES" in content)
+        is_truncated = bool(content and b"MAXIMUM OF 10 MATCHES" in content and http_count <= 10)
         is_bytime = "matchday=6" in url or "matchday=106" in url or "matchday=206" in url
         if browser_fallback:
             b_status, b_content, b_headers, b_error = browser.fetch(url)
@@ -499,8 +499,10 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
         "".join(json.dumps(link, sort_keys=True) + "\n" for link in fixture_links), encoding="utf-8"
     )
 
+    # Include league comprehensive snapshots in main manifest for audit completeness
+    all_snapshots = snapshots + league_snapshots
     (run_dir / "manifest.jsonl").write_text(
-        "".join(s.model_dump_json() + "\n" for s in snapshots), encoding="utf-8"
+        "".join(s.model_dump_json() + "\n" for s in all_snapshots), encoding="utf-8"
     )
 
     # Merge league snapshots into manifest as well for audit
