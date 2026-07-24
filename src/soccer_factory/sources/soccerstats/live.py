@@ -49,53 +49,20 @@ LEAGUES_URL = "https://www.soccerstats.com/leagues.asp"
 
 
 def daily_index_urls(target: date, today: date) -> List[str]:
-    """Return explicitly supported relative-day index routes.
+    """Return the full set of daily-index URLs for the given target date.
 
-    PATCHED: Now includes by-time views (6,106,206) for today which are NOT limited
-    to 10 matches, unlike grouped views (1,101,201). Also includes all 3 scopes
-    for yesterday.
-
-    matchday mapping discovered:
-      0   = yesterday results (full, 30 matches) home_away
-      100 = yesterday results all_games (full)
-      200 = yesterday results last_8 (full)
-      1   = today grouped home_away (limited to 10 for public)
-      101 = today grouped all_games (limited)
-      201 = today grouped last_8 (limited)
-      2   = tomorrow grouped home_away (limited)
-      102 = tomorrow grouped all_games (limited)
-      202 = tomorrow grouped last_8 (limited)
-      6   = today by-time home_away (FULL 31 matches, NOT limited)
-      106 = today by-time all_games (FULL but shows same count, has limit banner? Actually 106 has limit banner but still 31)
-      206 = today by-time last_8 (FULL)
+    PATCHED (2026-07-24): Delegates to :mod:`urls.daily_index_urls`, which fans out
+    each base matchday token across the ``ms=<filter>`` statistical presets.  The
+    server renders the expanded "Show all matches" vertical layout only when an
+    ``ms=`` parameter is supplied, and no single preset exposes every league - so
+    the fan-out is required to see Iceland / Ireland / Poland / Sweden / Bulgaria /
+    etc. alongside the featured leagues.
     """
+    from . import urls as _urls
     offset = (target - today).days
-    if offset == -1:
-        # Yesterday - all 3 scopes are FULL (not limited)
-        return [
-            f"{BASE}?matchday=0&daym=yesterday&matchdayn=1",
-            f"{BASE}?matchday=100&daym=yesterday&matchdayn=1",
-            f"{BASE}?matchday=200&daym=yesterday&matchdayn=1",
-        ]
-    if offset == 0:
-        # Today: grouped (limited) + by-time (FULL)
-        return [
-            f"{BASE}?matchday=1&matchdayn=1",      # home_away grouped (limited to 10)
-            f"{BASE}?matchday=101&matchdayn=1",    # all_games grouped (limited)
-            f"{BASE}?matchday=201&matchdayn=1",    # last_8 grouped (limited)
-            f"{BASE}?matchday=6&matchdayn=1",      # by-time home_away (FULL 31) - KEY FIX
-            f"{BASE}?matchday=106&matchdayn=1",    # by-time all_games (FULL)
-            f"{BASE}?matchday=206&matchdayn=1",    # by-time last_8 (FULL)
-        ]
-    if offset == 1:
-        # Tomorrow: grouped is limited to 10, but we include it anyway
-        # plus we will trigger comprehensive league collection as fallback
-        return [
-            f"{BASE}?matchday=2&daym=tomorrow&matchdayn=1",
-            f"{BASE}?matchday=102&daym=tomorrow&matchdayn=1",
-            f"{BASE}?matchday=202&daym=tomorrow&matchdayn=1",
-        ]
-    raise ValueError("Live SoccerStats collection currently supports yesterday, today, or tomorrow only")
+    if offset not in (-1, 0, 1):
+        raise ValueError("Live SoccerStats collection currently supports yesterday, today, or tomorrow only")
+    return list(_urls.daily_index_urls(offset))
 
 
 def daily_index_urls_comprehensive(target: date, today: date) -> List[str]:
@@ -107,22 +74,8 @@ def daily_index_urls_comprehensive(target: date, today: date) -> List[str]:
 
 
 def index_scope(url: str) -> str:
-    matchday = parse_qs(urlparse(url).query).get("matchday", [""])[0]
-    mapping = {
-        "0": "results",
-        "1": "home_away",
-        "2": "home_away",
-        "6": "by_time_home_away",
-        "100": "results_all_games",
-        "101": "all_games",
-        "102": "all_games",
-        "106": "by_time_all_games",
-        "200": "results_last_8",
-        "201": "last_8",
-        "202": "last_8",
-        "206": "by_time_last_8",
-    }
-    return mapping.get(matchday, f"unknown_{matchday}")
+    from . import urls as _urls
+    return _urls.index_scope(url)
 
 
 def _snapshot(*, source: str, url: str, status: int, content: bytes, headers: dict[str, str],
@@ -261,23 +214,30 @@ def collect_league_comprehensive(*, target: date, output_dir: Path, contact_emai
 
 
 def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact_email: str,
-                         parser_version: str, max_previews: int = 20,
+                         parser_version: str, max_previews: int = 0,
                          browser_fallback: bool = False,
-                         comprehensive_fallback: bool = True,
-                         max_leagues_for_comprehensive: int = 30) -> list[RawSnapshot]:
+                         comprehensive_fallback: bool = False,
+                         max_leagues_for_comprehensive: int = 30,
+                         index_urls_override: Optional[List[str]] = None) -> list[RawSnapshot]:
     """Collect one daily index and previews for its scheduled fixtures only.
 
-    PATCHED to handle 10-match limit:
-    - Detects truncation via "MAXIMUM OF 10 MATCHES" banner
-    - Includes by-time views (matchday=6) which are NOT limited
-    - Optionally triggers league comprehensive collection for tomorrow
+    PATCHED (2026-07-24):
+    - Default ``max_previews`` is 0 so callers that just want fixture discovery don't
+      need to worry about the request budget when the index URL set is large (ms=
+      fan-out for today/tomorrow).
+    - The ms= filter fan-out in urls.daily_index_urls exposes every league that
+      SoccerStats lists publicly (Iceland / Ireland / Poland / Sweden / Bulgaria /
+      etc.), so league-comprehensive crawling is opt-in and off by default.
+    - Detects truncation via "MAXIMUM OF 10 MATCHES" banner.
+    - Includes by-time views (matchday=6/106/206) as a redundant flat source for today.
 
-    A result-analysis URL is never followed here.  That keeps completed-match
+    A result-analysis URL is never followed here unless previews/results are
+    explicitly requested with ``max_previews>0``.  That keeps completed-match
     material out of the pre-match snapshot workflow.  ``max_previews`` provides
-    a hard bound below the source policy's 50-request run limit.
+    a hard bound below the source policy's 50-request run limit (or 250 if
+    comprehensive_fallback is enabled).
     """
-    index_urls = daily_index_urls(target, today)
-    # For today, we have 6 index urls, for yesterday 3, for tomorrow 3
+    index_urls = list(index_urls_override) if index_urls_override is not None else daily_index_urls(target, today)
     reserved_index_requests = len(index_urls) * (2 if browser_fallback else 1)
     
     # If comprehensive fallback is enabled for tomorrow, reserve extra
