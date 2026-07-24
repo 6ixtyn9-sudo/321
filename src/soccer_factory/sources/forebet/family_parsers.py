@@ -170,9 +170,40 @@ def parse_match_preview(content: bytes, collected_at: datetime):
         obs.append(_make_obs("Unknown vs Unknown", Market.BTTS.value, "Yes", collected_at))
     return {"matches": matches, "features": [], "observations": obs}
 
+def parse_json_daily(content: bytes, collected_at: datetime):
+    """Parse a merged Forebet JSON daily payload produced by ``collect_daily_bundle``
+    (one ``merged_YYYY-MM-DD.json`` snapshot containing all records)."""
+    import json
+    from .parser import ForebetParser
+    try:
+        data = json.loads(content.decode("utf-8", "replace"))
+    except Exception:
+        return {"matches": [], "features": [], "observations": []}
+    # data may be a raw getrs.php [rows, meta] payload OR our merged list of records
+    from .parser import _records_from_json_payload
+    records = []
+    if isinstance(data, list):
+        # If it looks like a raw endpoint payload, shape it via the parser's helper
+        if data and isinstance(data[0], list) and data[0] and isinstance(data[0][0], dict) and "HOST_NAME" in data[0][0]:
+            # Can't directly shape raw endpoint without market resolution; skip
+            return {"matches": [], "features": [], "observations": []}
+        records = [r for r in data if isinstance(r, dict)]
+    elif isinstance(data, dict):
+        records = data.get("records", [])
+    parser = ForebetParser()
+    matches = parser.matches_from_records(records, collected_at)
+    obs = parser.observations_from_records(records, collected_at)
+    return {"matches": matches, "features": [], "observations": obs}
+
+
 def parse_prediction_list(content: bytes, collected_at: datetime):
-    """Parse /prediction-list - generic list of predictions"""
-    # Reuse existing ForebetParser logic for rcnt divs
+    """Parse /prediction-list - generic list of predictions, HTML rcnt divs or JSON."""
+    # Try JSON first
+    if content[:1].lstrip()[:1] in (b"[", b"{"):
+        try:
+            return parse_json_daily(content, collected_at)
+        except Exception:
+            pass
     from .parser import ForebetParser
     parser = ForebetParser()
     matches = parser.parse_matches(content, collected_at)
