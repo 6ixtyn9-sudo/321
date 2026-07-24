@@ -71,6 +71,16 @@ _ABBREV: Dict[str, str] = {
     "nffc": "nottingham forest",
     "coyi": "west ham",  # fan acronym; harmless
     "psg": "paris saint germain",
+    # Truncations commonly used by score sites (e.g. SoccerStats table width)
+    "nottm": "nottingham",
+    "nott": "nottingham",
+    "sheff": "sheffield",
+    "tot": "tottenham",
+    "ars": "arsenal",
+    "che": "chelsea",
+    # NOTE: three-letter FIFA codes like MUN/MCI/EVE are NOT expanded here
+    # because they are ambiguous without context (e.g. MUN could be read as a
+    # standalone token and distort other names).
     # Common anglicised / local dual forms (anglicised -> local so both
     # sources collapse to the same token; we pick the local form because
     # Forebet and SoccerStats lean European).

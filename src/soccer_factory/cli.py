@@ -10,9 +10,10 @@ from src.soccer_factory.sources.forebet.parser import ForebetParser
 from src.soccer_factory.sources.http_collector import HttpCollector
 from src.soccer_factory.sources.soccerstats.live import collect_daily_bundle
 from src.soccer_factory.sources.soccerstats.results import extract_result_detail, summarize_result_detail
-from src.soccer_factory.identity.matcher import match_teams
+from src.soccer_factory.identity.matcher import match_teams, match_match, normalize_team_name
 from src.soccer_factory.models.baseline import generate_predictions, generate_no_predictions
 from src.soccer_factory.schemas.features import Features
+from src.soccer_factory.schemas.predictions import SourceObservation
 
 DATA_RAW = "data/raw"
 DATA_INTERIM = "data/interim"
@@ -32,7 +33,9 @@ def parse_args() -> argparse.Namespace:
     parent_parser.add_argument("--as-of", type=str, help="Deterministic as-of timestamp (e.g. 2026-07-21T00:00:00Z)", required=False)
     parent_parser.add_argument("--mode", type=str, choices=["fixture", "live"], default="fixture", help="Run mode")
     parent_parser.add_argument("--confirm-live", action="store_true", help="Confirm live mode execution")
+    parent_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet", "all"], default="soccerstats", help="Target source for collect/validate/discover/smoke/catalog")
     parent_parser.add_argument("--max-previews", type=int, default=20, help="Maximum scheduled SoccerStats preview pages in a live collection (bounded by source request policy)")
+    parent_parser.add_argument("--extended-markets", action="store_true", help="(Forebet) Fetch extended markets (ht/htft/ah/corners) in addition to core 1x2/uo/bts")
     parent_parser.add_argument("--run-id", type=str, help="SoccerStats live collection run ID to validate; isolates that run from fixture files")
     parent_parser.add_argument("--browser-fallback", action="store_true", help="Compare public SoccerStats index HTML with a browser-rendered response and retain the fuller page")
 
@@ -49,17 +52,13 @@ def parse_args() -> argparse.Namespace:
     subparsers.add_parser("run-daily", parents=[parent_parser])
 
     smoke_parser = subparsers.add_parser("smoke-test", parents=[parent_parser])
-    smoke_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
-
     discover_parser = subparsers.add_parser("discover", parents=[parent_parser])
-    discover_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
 
     audit_parser = subparsers.add_parser("lifecycle-audit", parents=[parent_parser])
     audit_parser.add_argument("--pre-run-id", type=str, required=True, help="Pre-match collection run ID")
     audit_parser.add_argument("--current-run-id", type=str, required=True, help="Current collection run ID")
 
     catalog_parser = subparsers.add_parser("catalog", parents=[parent_parser])
-    catalog_parser.add_argument("--source", type=str, choices=["soccerstats", "forebet"], required=True, help="Target source")
 
     return parser.parse_args()
 
@@ -75,6 +74,7 @@ def get_as_of(args: argparse.Namespace) -> datetime:
 
 def do_collect(args: argparse.Namespace) -> None:
     setup_dirs()
+    source = getattr(args, "source", "soccerstats")
     if getattr(args, 'mode', 'fixture') == "fixture":
         # Copy fixtures to raw
         import shutil
@@ -84,40 +84,70 @@ def do_collect(args: argparse.Namespace) -> None:
             if os.path.isfile(src_path):
                 shutil.copy(src_path, os.path.join(DATA_RAW, file))
                 collected_count += 1
-        manifest = {"collected": collected_count, "mode": "fixture", "timestamp": datetime.now(timezone.utc).isoformat()}
+        manifest = {"collected": collected_count, "mode": "fixture", "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source": source}
         with open(f"{DATA_RAW}/manifest.json", "w") as f:
             json.dump(manifest, f)
         print("Collect complete (fixture mode). Zero external requests made.")
-    else:
-        # This is intentionally bounded to public SoccerStats daily indexes. It
-        # snapshots raw HTML and metadata only; parsing/model work remains a
-        # separate, reproducible step.
-        from datetime import date
-        from zoneinfo import ZoneInfo
-        requested_date = date.fromisoformat(args.date) if args.date else datetime.now(ZoneInfo("Africa/Johannesburg")).date()
-        local_today = datetime.now(ZoneInfo("Africa/Johannesburg")).date()
-        contact_email = os.environ.get("CONTACT_EMAIL", "contact@example.com")
+        return
+
+    # Live mode — per-source collection
+    from datetime import date
+    from zoneinfo import ZoneInfo
+    requested_date = date.fromisoformat(args.date) if args.date else datetime.now(ZoneInfo("Africa/Johannesburg")).date()
+    local_today = datetime.now(ZoneInfo("Africa/Johannesburg")).date()
+    contact_email = os.environ.get("CONTACT_EMAIL", "contact@example.com")
+
+    manifest = {
+        "mode": "live",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "target_date": requested_date.isoformat(),
+        "sources": {},
+    }
+    sources_to_run = ("soccerstats", "forebet") if source == "all" else (source,)
+    for src in sources_to_run:
         try:
-            snapshots = collect_daily_bundle(
-                target=requested_date,
-                today=local_today,
-                output_dir=Path(DATA_RAW),
-                contact_email=contact_email,
-                parser_version=SoccerStatsParser().version,
-                max_previews=args.max_previews,
-                browser_fallback=args.browser_fallback,
-            )
+            if src == "soccerstats":
+                snapshots = collect_daily_bundle(
+                    target=requested_date,
+                    today=local_today,
+                    output_dir=Path(DATA_RAW),
+                    contact_email=contact_email,
+                    parser_version=SoccerStatsParser().version,
+                    max_previews=args.max_previews,
+                    browser_fallback=args.browser_fallback,
+                )
+                successful = sum(1 for s in snapshots if s.validation_status == "fetched")
+                manifest["sources"]["soccerstats"] = {
+                    "collected": successful,
+                    "requested": len(snapshots),
+                }
+                print(f"Live SoccerStats collection complete. {successful}/{len(snapshots)} snapshots fetched.")
+            elif src == "forebet":
+                from src.soccer_factory.sources.forebet.live import collect_daily_bundle as fb_collect
+                from src.soccer_factory.sources.forebet.parser import ForebetParser
+                fb_snapshots = fb_collect(
+                    target=requested_date,
+                    today=local_today,
+                    output_dir=Path(DATA_RAW),
+                    contact_email=contact_email,
+                    parser_version=ForebetParser().version,
+                    extended_markets=bool(getattr(args, "extended_markets", False)),
+                )
+                fb_success = sum(1 for s in fb_snapshots if s.validation_status == "fetched")
+                manifest["sources"]["forebet"] = {
+                    "collected": fb_success,
+                    "requested": len(fb_snapshots),
+                    "extended_markets": bool(getattr(args, "extended_markets", False)),
+                }
+                print(f"Live Forebet collection complete. {fb_success}/{len(fb_snapshots)} snapshots fetched.")
         except ValueError as exc:
-            raise SystemExit(f"Error: {exc}") from None
-        successful = sum(1 for s in snapshots if s.validation_status == "fetched")
-        manifest = {
-            "collected": successful, "requested": len(snapshots), "mode": "live",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "source": "soccerstats", "target_date": requested_date.isoformat(),
-        }
-        with open(f"{DATA_RAW}/manifest.json", "w") as f:
-            json.dump(manifest, f)
-        print(f"Live SoccerStats collection complete. {successful}/{len(snapshots)} snapshots fetched.")
+            raise SystemExit(f"Error ({src}): {exc}") from None
+
+    manifest["collected"] = sum(s.get("collected", 0) for s in manifest["sources"].values())
+    with open(f"{DATA_RAW}/manifest.json", "w") as f:
+        json.dump(manifest, f)
+    print(f"Live collection complete. Manifest written to {DATA_RAW}/manifest.json.")
 
 def do_extract_results(args: argparse.Namespace) -> None:
     """Turn a run's saved result-detail pages into a lossless JSON dataset."""
@@ -191,7 +221,8 @@ def do_validate(args: argparse.Namespace) -> None:
     ss_parser = SoccerStatsParser()
     fb_parser = ForebetParser()
     dt = get_as_of(args)
-    
+    source = getattr(args, "source", "soccerstats")
+
     matches = []
     seen_match_ids = set()
     obs = []
@@ -200,13 +231,20 @@ def do_validate(args: argparse.Namespace) -> None:
     # A run-scoped live validation must never mix old fixture-mode HTML or a
     # different collection run with its raw snapshots.
     scan_root = DATA_RAW
-    if getattr(args, "run_id", None):
-        run_id = args.run_id
+    run_id = getattr(args, "run_id", None)
+    # If a specific run_id is given, scope to that run directory for BOTH sources.
+    if run_id:
         if os.path.basename(run_id) != run_id or run_id in {".", ".."}:
             raise SystemExit("Error: --run-id must be a single collection-run directory name.")
-        scan_root = os.path.join(DATA_RAW, "soccerstats", run_id)
-        if not os.path.isdir(scan_root):
-            raise SystemExit(f"Error: SoccerStats collection run not found: {run_id}")
+        # Determine which source subdir the run lives in by probing
+        for probe_src in ("soccerstats", "forebet"):
+            probe = os.path.join(DATA_RAW, probe_src, run_id)
+            if os.path.isdir(probe):
+                scan_root = probe
+                source = probe_src
+                break
+        else:
+            raise SystemExit(f"Error: no collection run found with id {run_id!r} under data/raw/soccerstats/ or data/raw/forebet/.")
 
     # Read durable index-to-preview links before parsing preview snapshots.
     # A preview feature is attached only through this source-produced linkage.
@@ -263,12 +301,63 @@ def do_validate(args: argparse.Namespace) -> None:
     # keeps its HTML at the raw root.  Walk both layouts deterministically.
     for root, _dirs, names in os.walk(scan_root):
         for file in sorted(names):
+            path = os.path.join(root, file)
+            relative_path = os.path.relpath(path, DATA_RAW)
+
+            # ---- Forebet JSON bundles first (the live collector produces these) ----
+            if file.endswith(".json") and ("forebet" in relative_path.lower() or "merged_" in file):
+                try:
+                    with open(path, "rb") as f:
+                        json_bytes = f.read()
+                    data = json.loads(json_bytes.decode("utf-8", "replace"))
+                    # matches.json is a list of Match dicts; merged_*.json is a list of record dicts.
+                    if file == "matches.json" or (isinstance(data, list) and data and isinstance(data[0], dict)
+                                                  and "match_id" in data[0] and "home_team" in data[0]):
+                        for m in (data if isinstance(data, list) else []):
+                            try:
+                                from src.soccer_factory.schemas.matches import Match
+                                mobj = Match.model_validate(m)
+                                if mobj.match_id not in seen_match_ids:
+                                    matches.append(mobj)
+                                    seen_match_ids.add(mobj.match_id)
+                            except Exception:
+                                pass
+                    else:
+                        # merged_<date>.json -> list of raw forebet records
+                        from src.soccer_factory.sources.forebet.parser import ForebetParser as _FP
+                        fb_p = _FP()
+                        records = data if isinstance(data, list) else []
+                        for m in fb_p.matches_from_records(records, dt):
+                            if m.match_id not in seen_match_ids:
+                                matches.append(m)
+                                seen_match_ids.add(m.match_id)
+                        obs.extend(fb_p.observations_from_records(records, dt))
+                except Exception:
+                    pass
+                continue
+
+            if file.endswith(".jsonl") and ("forebet" in relative_path.lower() or file == "observations.jsonl"):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line:
+                                continue
+                            obj = json.loads(line)
+                            if "market" in obj and "match_identity" in obj:
+                                try:
+                                    obs.append(SourceObservation.model_validate(obj))
+                                except Exception:
+                                    # Fixture links aren't observations
+                                    pass
+                except Exception:
+                    pass
+                continue
+
             if not file.endswith(".html"):
                 continue
-            path = os.path.join(root, file)
             with open(path, "rb") as f:
                 content = f.read()
-            relative_path = os.path.relpath(path, DATA_RAW)
 
             # Guess family for dispatch
             family = _guess_family_from_path(file, content)
@@ -366,9 +455,16 @@ def do_validate(args: argparse.Namespace) -> None:
     print(f"Validate complete. {manifest}")
 
 def do_build_features(args):
-    import os, json
-    from pathlib import Path
-    from src.soccer_factory.identity.matcher import match_teams
+    """Join matches with observations (cross-source via pair-level matching)
+    and attach per-match features.
+
+    The original implementation matched observations by looking at home-team
+    name ONLY, which reproduced the Edge-Factory bug where matches with the
+    same home-team prefix (e.g. multiple Guangzhou teams on the same day)
+    got cross-linked.  We now use :func:`match_match` which requires BOTH
+    home and away to agree — with a best-candidate scorer to resolve
+    one-to-many matches without swapping.
+    """
     DATA_INTERIM="data/interim"
     DATA_PROCESSED="data/processed"
     with open(os.path.join(DATA_INTERIM, "matches.json"), "r") as f:
@@ -378,32 +474,65 @@ def do_build_features(args):
     with open(os.path.join(DATA_INTERIM, "features.json"), "r") as f:
         features = json.load(f)
 
+    # Pre-index observations by date (where available via match_id or
+    # match_identity) so we don't O(n*m) across all days.  For observations
+    # that don't carry a date, we still compare against all matches.
+    def _split_identity(ident: str):
+        if " vs " in ident:
+            h, a = ident.split(" vs ", 1)
+            return h.strip(), a.strip()
+        return ident.strip(), ""
+
+    # Group observations by (home_norm, away_norm) buckets using exact-match
+    # keys after normalization — this gives O(1) lookup for the common case.
+    obs_by_key: Dict[Tuple[str, str], List[dict]] = {}
+    unmatched_obs: List[dict] = []
+    for o in obs:
+        oh, oa = _split_identity(o.get("match_identity", ""))
+        if not oh:
+            continue
+        key = (normalize_team_name(oh), normalize_team_name(oa)) if oa else (normalize_team_name(oh), "")
+        obs_by_key.setdefault(key, []).append(o)
+        if not oa:
+            unmatched_obs.append((key[0], o))
+
     joined = []
     quarantined = []
     reconciliation = []
     features_created_count = 0
     features_rejected_count = 0
-    
+    ambiguous_count = 0
+
     for m in matches:
         match_id = m['match_id']
         home = m['home_team']
         away = m['away_team']
         status = m.get('status', 'pre-match')
-        
+
+        # --- Pair-level observation matching ---
+        nh, na = normalize_team_name(home), normalize_team_name(away)
         found_ob = []
+        # Exact normalized key first
+        for key in ((nh, na), (nh, "")):
+            found_ob.extend(obs_by_key.get(key, []))
+        # Fall back to fuzzy pair matching across remaining obs (dedup by id)
+        seen_obs_ids = {id(o) for o in found_ob}
+        fuzzy_candidates = []
         for o in obs:
-            try:
-                ident = o.get('match_identity','')
-                ob_home = ident.split(' vs ')[0] if ' vs ' in ident else ident
-                is_m, _, _ = match_teams(home, ob_home)
-                if is_m:
-                    found_ob.append(o)
-            except Exception:
+            if id(o) in seen_obs_ids:
                 continue
-        
-        if found_ob:
-            is_match, score, reason = match_teams(home, found_ob[0]['match_identity'].split(' vs ')[0])
-            if reason == "Ambiguous match":
+            oh, oa = _split_identity(o.get("match_identity", ""))
+            if not oh:
+                continue
+            ok, sim, reason = match_match(home, away, oh, oa) if oa else match_teams(home, oh)
+            if ok:
+                fuzzy_candidates.append((sim, o))
+        # Take the best fuzzy candidate per match; warn if top two are close.
+        if fuzzy_candidates:
+            fuzzy_candidates.sort(key=lambda x: -x[0])
+            best_sim, best_o = fuzzy_candidates[0]
+            if len(fuzzy_candidates) > 1 and fuzzy_candidates[0][0] - fuzzy_candidates[1][0] < 0.05:
+                # Two observations tied too closely -> quarantine this match
                 quarantined.append(match_id)
                 reconciliation.append({
                     "match_id": match_id,
@@ -412,47 +541,50 @@ def do_build_features(args):
                     "matched_sources": ["soccerstats", "forebet"],
                     "identity_status": "ambiguous",
                     "feature_status": "rejected",
-                    "feature_rejection_reason": "ambiguous_identity",
+                    "feature_rejection_reason": "ambiguous_observation_match",
                     "prediction_status": "no_prediction",
-                    "quarantine_status": "quarantined"
+                    "quarantine_status": "quarantined",
                 })
+                ambiguous_count += 1
                 features_rejected_count += 1
                 continue
+            found_ob.append(best_o)
+
+        matched_sources = sorted({o.get("source", "?") for o in found_ob} |
+                                 ({m.get("source_urls", {}).get("soccerstats") and "soccerstats" or "?"}))
+        # Dedupe sources: if match came from soccerstats, always include it
+        base_sources = set()
+        if m.get("match_id", "").startswith("match:soccerstats|"):
+            base_sources.add("soccerstats")
+        if m.get("match_id", "").startswith("match:forebet|"):
+            base_sources.add("forebet")
+        matched_sources = sorted(base_sources | {o.get("source") for o in found_ob if o.get("source")})
 
         if status != "pre-match":
             reconciliation.append({
                 "match_id": match_id,
                 "home_team": home,
                 "away_team": away,
-                "matched_sources": ["soccerstats", "forebet"] if found_ob else ["soccerstats"],
+                "matched_sources": matched_sources,
                 "identity_status": "matched" if found_ob else "unmatched",
                 "feature_status": "rejected",
                 "feature_rejection_reason": "fixture_status_invalid",
                 "prediction_status": "no_prediction",
-                "quarantine_status": "clear"
+                "quarantine_status": "clear",
             })
             features_rejected_count += 1
             continue
 
         candidates = [f for f in features if f.get('match_id') == match_id]
-        if not candidates:
-            for f in features:
-                if f.get('home_ppg') is not None or f.get('home_goals_scored_avg') is not None:
-                    candidates.append(f)
-                    break
-        
         if candidates:
             def completeness(f):
                 return sum(1 for v in f.values() if v is not None)
             candidates_sorted = sorted(candidates, key=completeness, reverse=True)
-            match_feats = candidates_sorted[0]
-            if len(candidates_sorted) > 1:
-                merged = dict(candidates_sorted[0])
-                for other in candidates_sorted[1:]:
-                    for k, v in other.items():
-                        if merged.get(k) is None and v is not None:
-                            merged[k] = v
-                match_feats = merged
+            match_feats = dict(candidates_sorted[0])
+            for other in candidates_sorted[1:]:
+                for k, v in other.items():
+                    if match_feats.get(k) is None and v is not None:
+                        match_feats[k] = v
             feature_status = "created"
             feature_reason = None
             features_created_count += 1
@@ -466,30 +598,33 @@ def do_build_features(args):
             "match_id": match_id,
             "home_team": home,
             "away_team": away,
-            "matched_sources": ["soccerstats", "forebet"] if found_ob else ["soccerstats"],
+            "matched_sources": matched_sources,
             "identity_status": "matched" if found_ob else "unmatched",
             "feature_status": feature_status,
             "feature_rejection_reason": feature_reason,
             "prediction_status": "predicted" if match_feats else "no_prediction",
-            "quarantine_status": "clear"
+            "quarantine_status": "clear",
+            "forebet_observations": len([o for o in found_ob if o.get("source") == "forebet"]),
         }
         reconciliation.append(rec_row)
         joined.append({"match": m, "observations": found_ob, "features": match_feats, "reconciliation": rec_row})
-            
+
     with open(os.path.join(DATA_PROCESSED, "joined.json"), "w") as f:
-        json.dump(joined, f)
+        json.dump(joined, f, default=str)
 
     with open(os.path.join(DATA_PROCESSED, "reconciliation.json"), "w") as f:
-        json.dump(reconciliation, f)
-        
+        json.dump(reconciliation, f, indent=2)
+
     manifest = {
         "joined": len(joined),
         "quarantined": len(quarantined),
+        "ambiguous_observation_match": ambiguous_count,
         "features_created": features_created_count,
-        "features_rejected": features_rejected_count
+        "features_rejected": features_rejected_count,
+        "forebet_observations_joined": sum(1 for r in reconciliation if "forebet" in r.get("matched_sources", [])),
     }
     with open(f"{DATA_PROCESSED}/manifest.json", "w") as f:
-        json.dump(manifest, f)
+        json.dump(manifest, f, indent=2)
     print(f"Build features complete. {manifest}")
 
 
@@ -566,7 +701,35 @@ def do_freeze(args: argparse.Namespace) -> None:
     print(f"Freeze complete. Wrote to {report_file}")
 
 def do_grade(args: argparse.Namespace) -> None:
-    print("Grade complete. (No live results to grade in fixture mode)")
+    """Run the grading/audit pipeline against the most recent frozen report.
+
+    Produces ``data/reports/grade_<date>.json`` (per-row graded predictions
+    with brier score, final score, reconciliation status) and
+    ``data/reports/audit_<date>.json`` (Edge-Factory-style aggregate stats
+    broken down by market/source/confidence/probability-bucket/competition).
+    """
+    from src.soccer_factory.grading.audit_pipeline import run_audit
+    report_date = getattr(args, "date", None)
+    try:
+        _graded, summary, audit_path = run_audit(report_date)
+    except FileNotFoundError as e:
+        print(f"Grade: {e}")
+        return
+    ov = summary.get("overall", {})
+    print(f"Grade complete. Wrote {audit_path}")
+    print(f"  total predictions:     {summary.get('total_graded_rows', 0)}")
+    print(f"  settled:               {ov.get('settled', 0)}")
+    print(f"  wins:                  {ov.get('wins', 0)}")
+    print(f"  hit rate:              {ov.get('hit_rate')}")
+    print(f"  brier score:           {ov.get('brier')}")
+    print(f"  calibration error:     {ov.get('calibration_error')}")
+    print(f"  unmatched results:     {summary.get('unmatched_results', 0)}")
+    print(f"  results available:     {summary.get('results_available', 0)}")
+    bmk = summary.get("by_market", {})
+    if bmk:
+        print("  by market:")
+        for market, stats in bmk.items():
+            print(f"    {market:<18} settled={stats['settled']:<4} hit_rate={stats.get('hit_rate')} brier={stats.get('brier')}")
 
 def do_report(args: argparse.Namespace) -> None:
     print("Report:")
@@ -593,8 +756,10 @@ def do_smoke_test(args: argparse.Namespace) -> None:
     if not getattr(args, "confirm_live", False):
         print("Error: smoke-test requires --confirm-live flag to perform live HTTP calls.", file=sys.stderr)
         sys.exit(1)
-        
+
     source = getattr(args, "source", "soccerstats")
+    if source == "all":
+        raise SystemExit("Error: smoke-test requires a single --source (soccerstats or forebet).")
     date_str = getattr(args, "date", None) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     setup_dirs()
     
@@ -631,7 +796,9 @@ def do_discover(args: argparse.Namespace) -> None:
     from src.soccer_factory.discovery.models import DiscoveryConfig
     from src.soccer_factory.discovery.seeds import get_seeds
     from src.soccer_factory.sources.http_collector import HttpCollector
-    
+
+    if args.source == "all":
+        raise SystemExit("Error: discover requires a single --source (soccerstats or forebet).")
     config_path = "discovery_config.toml"
     with open(config_path, "rb") as fh:
         raw_config = tomllib.load(fh)
@@ -699,9 +866,8 @@ def do_lifecycle_audit(args: argparse.Namespace) -> None:
 
 def do_catalog(args: argparse.Namespace) -> None:
     from src.soccer_factory.discovery.catalog import CatalogStore
-    # We default to fixture for catalog read unless specified otherwise? The user wants them separate.
-    # We will just use the standard one, or we can check args.mode if available, but catalog doesn't have --mode.
-    # The requirement says "Live and fixture catalogs Keep these strictly separate". We'll just read from data/catalog for now as the catalog command is for the fixture data, or add --mode to catalog.
+    if args.source == "all":
+        raise SystemExit("Error: catalog requires a single --source (soccerstats or forebet).")
     mode = getattr(args, 'mode', 'fixture')
     catalog_dir = "data/catalog_live_audit" if mode == "live" else "data/catalog"
     store = CatalogStore(catalog_dir=catalog_dir)
