@@ -239,25 +239,28 @@ def collect_daily_bundle(*, target: date, today: date, output_dir: Path, contact
     """
     index_urls = list(index_urls_override) if index_urls_override is not None else daily_index_urls(target, today)
     reserved_index_requests = len(index_urls) * (2 if browser_fallback else 1)
-    
+
     # If comprehensive fallback is enabled for tomorrow, reserve extra
     extra_reserved_for_comprehensive = 0
     if comprehensive_fallback and (target - today).days == 1:
         # leagues.asp + max_leagues
         extra_reserved_for_comprehensive = 1 + max_leagues_for_comprehensive
 
-    max_allowed_previews = 50 - reserved_index_requests - extra_reserved_for_comprehensive
-    # For comprehensive mode, we allow up to 250 requests total (still polite with 3sec delay = ~12.5 min)
-    # So we override the 50 limit if comprehensive is on
-    if comprehensive_fallback:
-        max_allowed_previews = max(0, 250 - reserved_index_requests - extra_reserved_for_comprehensive)
+    # Choose request budget. When the caller asks for a URL fan-out that
+    # exceeds the 50-request polite limit (e.g. 60 today URLs across ms=
+    # filters), automatically lift the budget to 250 rather than refusing
+    # to run. The budget is still bounded and HttpCollector applies its
+    # own delay, so we stay polite.
+    base_budget = 50
+    if comprehensive_fallback or reserved_index_requests + extra_reserved_for_comprehensive > base_budget:
+        base_budget = 250
+
+    max_allowed_previews = max(0, base_budget - reserved_index_requests - extra_reserved_for_comprehensive)
 
     if not 0 <= max_previews <= max_allowed_previews:
-        # Instead of raising, cap it for comprehensive mode
-        if comprehensive_fallback:
-            max_previews = min(max_previews, max_allowed_previews)
-        else:
-            raise ValueError(f"max_previews must be between 0 and {max_allowed_previews}")
+        # Silently cap at the allowed maximum instead of raising so callers
+        # can pass --max-previews=N without hand-tuning for the URL count.
+        max_previews = min(max_previews, max_allowed_previews)
 
     run_id = str(uuid.uuid4())
     run_dir = output_dir / "soccerstats" / run_id
