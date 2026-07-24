@@ -361,9 +361,15 @@ class TestNormalize:
     def test_strips_fc_suffix(self):
         assert normalize_team_name("Arsenal FC") == "arsenal"
 
-    def test_strips_the_prefix(self):
-        # "the" is not a stop-word in the current implementation, but "real" is
-        assert "real" not in normalize_team_name("Real Madrid")
+    def test_strips_corporate_suffixes_not_disambiguators(self):
+        # Corporate/legal prefixes (fc/cf/sc) are stripped.  But "real" is
+        # deliberately KEPT because it distinguishes Real Madrid from Real
+        # Sociedad / Real Betis / Atlético Madrid.  See matcher docstring.
+        norm = normalize_team_name("Real Madrid")
+        assert "real" in norm
+        assert "madrid" in norm
+        # FC suffix is stripped
+        assert normalize_team_name("Arsenal FC") == "arsenal"
 
     def test_handles_empty(self):
         assert normalize_team_name("") == ""
